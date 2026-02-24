@@ -1,4 +1,4 @@
-import { BarChart3, PlusCircle } from "lucide-react";
+import { BarChart3, PlusCircle, Database } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AppNavProps {
@@ -9,6 +9,7 @@ interface AppNavProps {
 const tabs = [
   { id: "dashboard", label: "Dashboard", icon: BarChart3 },
   { id: "add-sale", label: "Adicionar Venda", icon: PlusCircle },
+  { id: "database", label: "Banco de Dados", icon: Database },
 ];
 
 const AppNav = ({ activeTab, onTabChange }: AppNavProps) => (
