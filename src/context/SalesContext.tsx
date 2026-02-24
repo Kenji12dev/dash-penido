@@ -17,6 +17,7 @@ export interface Sale {
 interface SalesContextType {
   sales: Sale[];
   addSale: (sale: Omit<Sale, "id">) => void;
+  deleteSale: (id: string) => void;
   products: string[];
   closers: string[];
   sdrs: string[];
@@ -41,11 +42,16 @@ export const SalesProvider = ({ children }: { children: ReactNode }) => {
     setSales((prev) => [...prev, { ...sale, id: crypto.randomUUID() }]);
   };
 
+  const deleteSale = (id: string) => {
+    setSales((prev) => prev.filter((s) => s.id !== id));
+  };
+
   return (
     <SalesContext.Provider
       value={{
         sales,
         addSale,
+        deleteSale,
         products: defaultProducts,
         closers: defaultClosers,
         sdrs: defaultSdrs,
