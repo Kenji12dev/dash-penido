@@ -35,6 +35,7 @@ interface Collaborator {
   name: string;
   type: string;
   commission_rate: number;
+  fixed_salary: number;
   user_id: string | null;
 }
 
@@ -159,7 +160,11 @@ const Collaborators = () => {
     );
     const totalSales = paidSales.length;
     const totalRevenue = paidSales.reduce((sum, s) => sum + s.netValue, 0);
-    return { totalSales, totalRevenue };
+    const caixaGerado = paidSales.reduce((sum, s) => {
+      const entry = s.downPayment && s.downPayment > 0 ? s.downPayment : s.grossValue;
+      return sum + entry;
+    }, 0);
+    return { totalSales, totalRevenue, caixaGerado };
   };
 
   const closers = collaborators.filter((c) => c.type === "closer");
@@ -199,8 +204,10 @@ const Collaborators = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
+                  <TableHead>Fixo</TableHead>
                   <TableHead>Comissão</TableHead>
                   <TableHead>Vendas (Pago)</TableHead>
+                  <TableHead>Caixa Gerado</TableHead>
                   <TableHead>Receita Líquida</TableHead>
                   <TableHead className="w-[80px]">Ações</TableHead>
                 </TableRow>
@@ -211,8 +218,10 @@ const Collaborators = () => {
                   return (
                     <TableRow key={c.id}>
                       <TableCell className="font-medium">{c.name}</TableCell>
+                      <TableCell>{c.fixed_salary > 0 ? formatCurrency(c.fixed_salary) : "—"}</TableCell>
                       <TableCell>{formatPercent(c.commission_rate)}</TableCell>
                       <TableCell>{perf.totalSales}</TableCell>
+                      <TableCell>{formatCurrency(perf.caixaGerado)}</TableCell>
                       <TableCell>{formatCurrency(perf.totalRevenue)}</TableCell>
                       <TableCell>
                         <Button
@@ -241,8 +250,10 @@ const Collaborators = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead>
+                <TableHead>Fixo</TableHead>
                 <TableHead>Comissão</TableHead>
                 <TableHead>Vendas (Pago)</TableHead>
+                <TableHead>Caixa Gerado</TableHead>
                 <TableHead>Receita Líquida</TableHead>
                 <TableHead className="w-[80px]">Ações</TableHead>
               </TableRow>
@@ -253,8 +264,10 @@ const Collaborators = () => {
                 return (
                   <TableRow key={c.id}>
                     <TableCell className="font-medium">{c.name}</TableCell>
+                    <TableCell>{c.fixed_salary > 0 ? formatCurrency(c.fixed_salary) : "—"}</TableCell>
                     <TableCell>{formatPercent(c.commission_rate)}</TableCell>
                     <TableCell>{perf.totalSales}</TableCell>
+                    <TableCell>{formatCurrency(perf.caixaGerado)}</TableCell>
                     <TableCell>{formatCurrency(perf.totalRevenue)}</TableCell>
                     <TableCell>
                       <Button
