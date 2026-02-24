@@ -2,11 +2,11 @@ import { useState } from "react";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useSales, Sale } from "@/context/SalesContext";
-import { Columns3, GripVertical, Plus, CalendarIcon, Save, X } from "lucide-react";
+import { Columns3, GripVertical, Plus, CalendarIcon, Save, X, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import DateFilter from "@/components/dashboard/DateFilter";
-import { PAYMENT_METHODS, LEAD_SOURCES } from "@/data/mockData";
+import { PAYMENT_METHODS, LEAD_SOURCES, calculateNetValue, getFeeDescription } from "@/data/mockData";
 import {
   Dialog,
   DialogContent,
@@ -51,12 +51,16 @@ const KanbanBoard = () => {
   const [newDate, setNewDate] = useState<Date>(new Date());
   const [newClient, setNewClient] = useState("");
   const [newProduct, setNewProduct] = useState("");
-  const [newGross, setNewGross] = useState("");
-  const [newPayment, setNewPayment] = useState("");
   const [newCloser, setNewCloser] = useState("");
   const [newSdr, setNewSdr] = useState("");
   const [newLeadSource, setNewLeadSource] = useState("");
   const [newNotes, setNewNotes] = useState("");
+
+  // Move dialog (shown when dragging between columns)
+  const [moveDialog, setMoveDialog] = useState<{ saleId: string; targetStatus: string } | null>(null);
+  const [moveGross, setMoveGross] = useState("");
+  const [movePayment, setMovePayment] = useState("");
+  const [moveDownPayment, setMoveDownPayment] = useState("");
 
   // Detail dialog
   const [detailSale, setDetailSale] = useState<Sale | null>(null);
@@ -82,8 +86,11 @@ const KanbanBoard = () => {
     if (!draggedId) return;
     const sale = sales.find((s) => s.id === draggedId);
     if (sale && sale.status !== targetStatus) {
-      updateSale(draggedId, { status: targetStatus });
-      toast.success(`Venda movida para ${targetStatus}`);
+      // Open move dialog so user can fill value/payment
+      setMoveDialog({ saleId: draggedId, targetStatus });
+      setMoveGross(sale.grossValue > 0 ? String(sale.grossValue) : "");
+      setMovePayment(sale.paymentMethod || "");
+      setMoveDownPayment(sale.downPayment ? String(sale.downPayment) : "");
     }
     setDraggedId(null);
     setDragOverColId(null);
@@ -91,6 +98,37 @@ const KanbanBoard = () => {
   const handleDragEnd = () => {
     setDraggedId(null);
     setDragOverColId(null);
+  };
+
+  // Confirm move
+  const handleMoveConfirm = () => {
+    if (!moveDialog) return;
+    const gross = parseFloat(moveGross) || 0;
+    const net = movePayment ? calculateNetValue(gross, movePayment) : gross;
+    const dp = parseFloat(moveDownPayment) || undefined;
+
+    const updates: Partial<Omit<Sale, "id">> = { status: moveDialog.targetStatus };
+    if (gross > 0) updates.grossValue = gross;
+    if (net > 0) updates.netValue = net;
+    if (movePayment) updates.paymentMethod = movePayment;
+    if (dp) updates.downPayment = dp;
+
+    updateSale(moveDialog.saleId, updates);
+    toast.success(`Venda movida para ${moveDialog.targetStatus}`);
+    setMoveDialog(null);
+    setMoveGross("");
+    setMovePayment("");
+    setMoveDownPayment("");
+  };
+
+  const handleMoveSkip = () => {
+    if (!moveDialog) return;
+    updateSale(moveDialog.saleId, { status: moveDialog.targetStatus });
+    toast.success(`Venda movida para ${moveDialog.targetStatus}`);
+    setMoveDialog(null);
+    setMoveGross("");
+    setMovePayment("");
+    setMoveDownPayment("");
   };
 
   const salesByStatus = (status: string) =>
@@ -103,8 +141,6 @@ const KanbanBoard = () => {
     setNewDate(new Date());
     setNewClient("");
     setNewProduct("");
-    setNewGross("");
-    setNewPayment("");
     setNewCloser("");
     setNewSdr("");
     setNewLeadSource("");
@@ -120,9 +156,9 @@ const KanbanBoard = () => {
       date: newDate,
       clientName: newClient.trim(),
       product: newProduct,
-      grossValue: parseFloat(newGross) || 0,
+      grossValue: 0,
       netValue: 0,
-      paymentMethod: newPayment || "Pix",
+      paymentMethod: "",
       closer: newCloser,
       sdr: newSdr,
       status: "Pendente",
@@ -146,6 +182,8 @@ const KanbanBoard = () => {
     toast.success("Informações atualizadas!");
     setDetailSale(null);
   };
+
+  const moveSale = moveDialog ? sales.find((s) => s.id === moveDialog.saleId) : null;
 
   return (
     <div className="min-h-screen bg-background p-6 lg:p-10">
@@ -225,13 +263,17 @@ const KanbanBoard = () => {
                             <span className="text-xs text-muted-foreground">
                               {format(new Date(sale.date), "dd/MM/yy", { locale: ptBR })}
                             </span>
-                            <span className="text-xs font-semibold text-foreground">
-                              R$ {sale.grossValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                            </span>
+                            {sale.grossValue > 0 && (
+                              <span className="text-xs font-semibold text-foreground">
+                                R$ {sale.grossValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                              </span>
+                            )}
                           </div>
                           <div className="flex items-center justify-between mt-1">
                             <span className="text-[10px] text-muted-foreground">{sale.closer}</span>
-                            <span className="text-[10px] text-muted-foreground">{sale.paymentMethod}</span>
+                            {sale.paymentMethod && (
+                              <span className="text-[10px] text-muted-foreground">{sale.paymentMethod}</span>
+                            )}
                           </div>
                           {sale.notes && (
                             <p className="text-[10px] text-muted-foreground mt-1 truncate italic">
@@ -249,12 +291,12 @@ const KanbanBoard = () => {
         </div>
       </div>
 
-      {/* Add Scheduling Dialog */}
+      {/* Add Scheduling Dialog — simplified, no value/payment */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Novo Agendamento</DialogTitle>
-            <DialogDescription>Preencha os dados do agendamento. Será criado com status "Pendente".</DialogDescription>
+            <DialogDescription>Preencha os dados do agendamento. Será criado como "Pendente".</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 mt-2">
             <div className="space-y-1.5">
@@ -284,8 +326,11 @@ const KanbanBoard = () => {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-muted-foreground">Valor Bruto</Label>
-                <Input type="number" placeholder="0,00" value={newGross} onChange={(e) => setNewGross(e.target.value)} />
+                <Label className="text-xs font-semibold text-muted-foreground">Origem *</Label>
+                <Select value={newLeadSource} onValueChange={setNewLeadSource}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>{LEAD_SOURCES.map((ls) => <SelectItem key={ls} value={ls}>{ls}</SelectItem>)}</SelectContent>
+                </Select>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -304,22 +349,6 @@ const KanbanBoard = () => {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-muted-foreground">Origem *</Label>
-                <Select value={newLeadSource} onValueChange={setNewLeadSource}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>{LEAD_SOURCES.map((ls) => <SelectItem key={ls} value={ls}>{ls}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-muted-foreground">Pagamento</Label>
-                <Select value={newPayment} onValueChange={setNewPayment}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>{PAYMENT_METHODS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-muted-foreground">Observações</Label>
               <Textarea placeholder="Briefing, anotações..." value={newNotes} onChange={(e) => setNewNotes(e.target.value)} rows={3} />
@@ -330,6 +359,67 @@ const KanbanBoard = () => {
               </Button>
               <Button variant="ghost" onClick={() => { resetAddForm(); setAddOpen(false); }}>
                 <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Move Dialog — appears when dragging between columns */}
+      <Dialog open={!!moveDialog} onOpenChange={(open) => { if (!open) { setMoveDialog(null); setMoveGross(""); setMovePayment(""); setMoveDownPayment(""); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowRight className="h-4 w-4 text-primary" />
+              Mover para {moveDialog?.targetStatus}
+            </DialogTitle>
+            <DialogDescription>
+              {moveSale ? `${moveSale.clientName} — ${moveSale.product}` : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-muted-foreground">Valor Bruto (R$)</Label>
+              <Input
+                type="number"
+                placeholder="0,00"
+                value={moveGross}
+                onChange={(e) => setMoveGross(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-muted-foreground">Método de Pagamento</Label>
+              <Select value={movePayment} onValueChange={setMovePayment}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_METHODS.map((m) => (
+                    <SelectItem key={m} value={m}>{m} <span className="text-muted-foreground ml-1">({getFeeDescription(m)})</span></SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {movePayment === "TMB" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-muted-foreground">Valor de Entrada</Label>
+                <Input
+                  type="number"
+                  placeholder="0,00"
+                  value={moveDownPayment}
+                  onChange={(e) => setMoveDownPayment(e.target.value)}
+                />
+              </div>
+            )}
+            {moveGross && movePayment && (
+              <div className="text-xs text-muted-foreground bg-secondary rounded-lg p-3">
+                Valor líquido: <span className="font-semibold text-foreground">R$ {calculateNetValue(parseFloat(moveGross) || 0, movePayment).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+              </div>
+            )}
+            <div className="flex gap-2 pt-1">
+              <Button onClick={handleMoveConfirm} className="flex-1 font-semibold">
+                <Save className="h-4 w-4 mr-1" /> Confirmar
+              </Button>
+              <Button variant="outline" onClick={handleMoveSkip} className="text-muted-foreground">
+                Pular
               </Button>
             </div>
           </div>
@@ -353,15 +443,19 @@ const KanbanBoard = () => {
                   </div>
                   <div>
                     <span className="text-muted-foreground text-xs">Valor Bruto</span>
-                    <p className="font-semibold text-foreground">R$ {detailSale.grossValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                    <p className="font-semibold text-foreground">
+                      {detailSale.grossValue > 0 ? `R$ ${detailSale.grossValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}
+                    </p>
                   </div>
                   <div>
                     <span className="text-muted-foreground text-xs">Pagamento</span>
-                    <p className="font-medium text-foreground">{detailSale.paymentMethod}</p>
+                    <p className="font-medium text-foreground">{detailSale.paymentMethod || "—"}</p>
                   </div>
                   <div>
                     <span className="text-muted-foreground text-xs">Valor Líquido</span>
-                    <p className="font-medium text-foreground">R$ {detailSale.netValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                    <p className="font-medium text-foreground">
+                      {detailSale.netValue > 0 ? `R$ ${detailSale.netValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}
+                    </p>
                   </div>
                   <div>
                     <span className="text-muted-foreground text-xs">Closer</span>
