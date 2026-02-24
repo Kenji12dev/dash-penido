@@ -28,6 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Users, Plus, Save, Loader2, Pencil, UserPlus } from "lucide-react";
+import CollaboratorCard from "@/components/dashboard/CollaboratorCard";
 import { toast } from "sonner";
 
 interface Collaborator {
@@ -177,7 +178,7 @@ const Collaborators = () => {
   const sdrs = collaborators.filter((c) => c.type === "sdr");
 
   return (
-    <div className="min-h-screen bg-background p-6 lg:p-10">
+    <div className="min-h-screen bg-background p-4 sm:p-6 lg:p-10">
       <div className="max-w-[1200px] mx-auto space-y-8">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
@@ -186,12 +187,12 @@ const Collaborators = () => {
               Gerenciar Colaboradores
             </h1>
           </div>
-          <div className="flex gap-2">
-            <Button onClick={() => setAddCollabOpen(true)} size="sm" variant="outline">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button onClick={() => setAddCollabOpen(true)} size="sm" variant="outline" className="w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-1" />
               Novo Colaborador
             </Button>
-            <Button onClick={() => setAddOpen(true)} size="sm">
+            <Button onClick={() => setAddOpen(true)} size="sm" className="w-full sm:w-auto">
               <UserPlus className="h-4 w-4 mr-1" />
               Criar Usuário
             </Button>
@@ -199,13 +200,111 @@ const Collaborators = () => {
         </div>
 
         {/* Closers */}
-        <div className="glass-card gradient-border p-6">
+        <div className="glass-card gradient-border p-4 sm:p-6">
           <h2 className="text-sm font-semibold text-foreground mb-4">Closers</h2>
           {loading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
           ) : (
+            <>
+              {/* Mobile cards */}
+              <div className="flex flex-col gap-3 md:hidden">
+                {closers.map((c) => {
+                  const perf = getPerformance(c.name, c.type);
+                  return (
+                    <CollaboratorCard
+                      key={c.id}
+                      name={c.name}
+                      fixedSalary={c.fixed_salary}
+                      commissionRate={c.commission_rate}
+                      totalSales={perf.totalSales}
+                      caixaGerado={perf.caixaGerado}
+                      totalRevenue={perf.totalRevenue}
+                      onEdit={() => {
+                        setEditCollab(c);
+                        setEditRate(String(c.commission_rate * 100));
+                        setEditFixedSalary(String(c.fixed_salary));
+                      }}
+                    />
+                  );
+                })}
+              </div>
+              {/* Desktop table */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Fixo</TableHead>
+                      <TableHead>Comissão</TableHead>
+                      <TableHead>Vendas (Pago)</TableHead>
+                      <TableHead>Caixa Gerado</TableHead>
+                      <TableHead>Receita Líquida</TableHead>
+                      <TableHead className="w-[80px]">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {closers.map((c) => {
+                      const perf = getPerformance(c.name, c.type);
+                      return (
+                        <TableRow key={c.id}>
+                          <TableCell className="font-medium">{c.name}</TableCell>
+                          <TableCell>{c.fixed_salary > 0 ? formatCurrency(c.fixed_salary) : "—"}</TableCell>
+                          <TableCell>{formatPercent(c.commission_rate)}</TableCell>
+                          <TableCell>{perf.totalSales}</TableCell>
+                          <TableCell>{formatCurrency(perf.caixaGerado)}</TableCell>
+                          <TableCell>{formatCurrency(perf.totalRevenue)}</TableCell>
+                          <TableCell>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditCollab(c);
+                                setEditRate(String(c.commission_rate * 100));
+                                setEditFixedSalary(String(c.fixed_salary));
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* SDRs */}
+        <div className="glass-card gradient-border p-4 sm:p-6">
+          <h2 className="text-sm font-semibold text-foreground mb-4">SDRs</h2>
+          {/* Mobile cards */}
+          <div className="flex flex-col gap-3 md:hidden">
+            {sdrs.map((c) => {
+              const perf = getPerformance(c.name, c.type);
+              return (
+                <CollaboratorCard
+                  key={c.id}
+                  name={c.name}
+                  fixedSalary={c.fixed_salary}
+                  commissionRate={c.commission_rate}
+                  totalSales={perf.totalSales}
+                  caixaGerado={perf.caixaGerado}
+                  totalRevenue={perf.totalRevenue}
+                  onEdit={() => {
+                    setEditCollab(c);
+                    setEditRate(String(c.commission_rate * 100));
+                    setEditFixedSalary(String(c.fixed_salary));
+                  }}
+                />
+              );
+            })}
+          </div>
+          {/* Desktop table */}
+          <div className="hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -219,7 +318,7 @@ const Collaborators = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {closers.map((c) => {
+                {sdrs.map((c) => {
                   const perf = getPerformance(c.name, c.type);
                   return (
                     <TableRow key={c.id}>
@@ -247,53 +346,7 @@ const Collaborators = () => {
                 })}
               </TableBody>
             </Table>
-          )}
-        </div>
-
-        {/* SDRs */}
-        <div className="glass-card gradient-border p-6">
-          <h2 className="text-sm font-semibold text-foreground mb-4">SDRs</h2>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Fixo</TableHead>
-                <TableHead>Comissão</TableHead>
-                <TableHead>Vendas (Pago)</TableHead>
-                <TableHead>Caixa Gerado</TableHead>
-                <TableHead>Receita Líquida</TableHead>
-                <TableHead className="w-[80px]">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sdrs.map((c) => {
-                const perf = getPerformance(c.name, c.type);
-                return (
-                  <TableRow key={c.id}>
-                    <TableCell className="font-medium">{c.name}</TableCell>
-                    <TableCell>{c.fixed_salary > 0 ? formatCurrency(c.fixed_salary) : "—"}</TableCell>
-                    <TableCell>{formatPercent(c.commission_rate)}</TableCell>
-                    <TableCell>{perf.totalSales}</TableCell>
-                    <TableCell>{formatCurrency(perf.caixaGerado)}</TableCell>
-                    <TableCell>{formatCurrency(perf.totalRevenue)}</TableCell>
-                    <TableCell>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => {
-                          setEditCollab(c);
-                          setEditRate(String(c.commission_rate * 100));
-                          setEditFixedSalary(String(c.fixed_salary));
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          </div>
         </div>
       </div>
 
