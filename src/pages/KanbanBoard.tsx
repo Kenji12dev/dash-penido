@@ -1,10 +1,11 @@
 import { useState, useRef } from "react";
-import { format } from "date-fns";
+import { format, subDays, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useSales, Sale } from "@/context/SalesContext";
+import { useSales } from "@/context/SalesContext";
 import { Columns3, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import DateFilter from "@/components/dashboard/DateFilter";
 
 const columns = [
   { id: "Pendente", label: "Agendado / Pendente", color: "border-yellow-500/60 bg-yellow-500/5" },
@@ -16,7 +17,14 @@ const columns = [
 const KanbanBoard = () => {
   const { sales, updateSale } = useSales();
   const [draggedId, setDraggedId] = useState<string | null>(null);
-  const dragOverCol = useRef<string | null>(null);
+  const [dragOverColId, setDragOverColId] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState(() => startOfDay(subDays(new Date(), 30)));
+  const [endDate, setEndDate] = useState(() => endOfDay(new Date()));
+
+  const filteredSales = sales.filter((s) => {
+    const d = new Date(s.date);
+    return d >= startDate && d <= endDate;
+  });
 
   const handleDragStart = (e: React.DragEvent, saleId: string) => {
     setDraggedId(saleId);
@@ -26,7 +34,7 @@ const KanbanBoard = () => {
   const handleDragOver = (e: React.DragEvent, colId: string) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-    dragOverCol.current = colId;
+    setDragOverColId(colId);
   };
 
   const handleDrop = (e: React.DragEvent, targetStatus: string) => {
@@ -38,31 +46,40 @@ const KanbanBoard = () => {
       toast.success(`Venda movida para ${targetStatus}`);
     }
     setDraggedId(null);
-    dragOverCol.current = null;
+    setDragOverColId(null);
   };
 
   const handleDragEnd = () => {
     setDraggedId(null);
-    dragOverCol.current = null;
+    setDragOverColId(null);
   };
 
   const salesByStatus = (status: string) =>
-    sales
+    filteredSales
       .filter((s) => s.status === status)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return (
     <div className="min-h-screen bg-background p-6 lg:p-10">
       <div className="max-w-[1440px] mx-auto space-y-6">
-        <div className="flex items-center gap-3">
-          <Columns3 className="h-5 w-5 text-primary" />
-          <h1 className="text-lg font-bold text-foreground tracking-tight">
-            Fluxo de Status
-          </h1>
-          <span className="text-xs text-muted-foreground bg-secondary px-2 py-1 rounded-md">
-            {sales.length} venda{sales.length !== 1 && "s"}
-          </span>
+        <div className="flex flex-wrap items-center gap-3 justify-between">
+          <div className="flex items-center gap-3">
+            <Columns3 className="h-5 w-5 text-primary" />
+            <h1 className="text-lg font-bold text-foreground tracking-tight">
+              Fluxo de Status
+            </h1>
+            <span className="text-xs text-muted-foreground bg-secondary px-2 py-1 rounded-md">
+              {filteredSales.length} venda{filteredSales.length !== 1 && "s"}
+            </span>
+          </div>
         </div>
+
+        <DateFilter
+          startDate={startDate}
+          endDate={endDate}
+          onStartDateChange={setStartDate}
+          onEndDateChange={setEndDate}
+        />
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           {columns.map((col) => {
@@ -71,11 +88,12 @@ const KanbanBoard = () => {
               <div
                 key={col.id}
                 onDragOver={(e) => handleDragOver(e, col.id)}
+                onDragLeave={() => setDragOverColId(null)}
                 onDrop={(e) => handleDrop(e, col.id)}
                 className={cn(
                   "rounded-xl border-2 border-dashed p-3 min-h-[400px] transition-colors",
                   col.color,
-                  draggedId && dragOverCol.current === col.id && "ring-2 ring-primary/40"
+                  draggedId && dragOverColId === col.id && "ring-2 ring-primary/40"
                 )}
               >
                 <div className="flex items-center justify-between mb-3 px-1">
