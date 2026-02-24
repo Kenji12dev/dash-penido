@@ -1,5 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useEffect } from "react";
-import { getSeedSales } from "@/data/seedSales";
+import { createContext, useContext, useState, ReactNode } from "react";
 
 export interface Sale {
   id: string;
@@ -40,7 +39,7 @@ export const useSales = () => {
 };
 
 export const SalesProvider = ({ children }: { children: ReactNode }) => {
-  const [sales, setSales] = useState<Sale[]>(() => getSeedSales());
+  const [sales, setSales] = useState<Sale[]>([]);
 
   const addSale = (sale: Omit<Sale, "id">) => {
     setSales((prev) => [...prev, { ...sale, id: crypto.randomUUID() }]);
