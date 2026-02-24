@@ -1,0 +1,1 @@
+ALTER TABLE public.collaborators ADD COLUMN fixed_salary numeric NOT NULL DEFAULT 0;

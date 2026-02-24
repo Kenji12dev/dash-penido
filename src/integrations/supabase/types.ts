@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           commission_rate: number
           created_at: string
+          fixed_salary: number
           id: string
           name: string
           type: string
@@ -27,6 +28,7 @@ export type Database = {
         Insert: {
           commission_rate?: number
           created_at?: string
+          fixed_salary?: number
           id?: string
           name: string
           type: string
@@ -36,6 +38,7 @@ export type Database = {
         Update: {
           commission_rate?: number
           created_at?: string
+          fixed_salary?: number
           id?: string
           name?: string
           type?: string
