@@ -87,7 +87,6 @@ const Dashboard = () => {
         </div>
 
         <RevenueChart data={metrics.revenueOverTime} />
-        <StatusDistribution data={metrics.statusData} />
         <CallStatusChart
           data={metrics.statusData}
           closers={metrics.closersList}
