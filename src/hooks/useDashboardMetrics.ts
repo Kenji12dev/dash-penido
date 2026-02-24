@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { useSales, Sale } from "@/context/SalesContext";
-import { format } from "date-fns";
+import { useSales } from "@/context/SalesContext";
+import { format, isWithinInterval, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { PAYMENT_METHOD_MAP, CHART_COLORS } from "@/data/mockData";
 
@@ -15,20 +15,29 @@ export interface DashboardMetrics {
   paymentData: { name: string; value: number; percentage: number; color: string }[];
 }
 
-export const useDashboardMetrics = (): DashboardMetrics => {
+export const useDashboardMetrics = (startDate: Date, endDate: Date): DashboardMetrics => {
   const { sales } = useSales();
 
   return useMemo(() => {
-    const paidSales = sales.filter((s) => s.status === "Pago");
+    const filteredSales = sales.filter((s) => {
+      const saleDate = new Date(s.date);
+      return (
+        s.status === "Pago" &&
+        isWithinInterval(saleDate, {
+          start: startOfDay(startDate),
+          end: endOfDay(endDate),
+        })
+      );
+    });
 
-    const faturamentoLiquido = paidSales.reduce((sum, s) => sum + s.netValue, 0);
-    const caixaGerado = paidSales.reduce((sum, s) => sum + s.grossValue, 0);
-    const quantidadeVendas = paidSales.length;
+    const faturamentoLiquido = filteredSales.reduce((sum, s) => sum + s.netValue, 0);
+    const caixaGerado = filteredSales.reduce((sum, s) => sum + s.grossValue, 0);
+    const quantidadeVendas = filteredSales.length;
     const ticketMedio = quantidadeVendas > 0 ? faturamentoLiquido / quantidadeVendas : 0;
 
     // Revenue over time - group by day
     const revenueByDay = new Map<string, number>();
-    paidSales.forEach((s) => {
+    filteredSales.forEach((s) => {
       const key = format(new Date(s.date), "dd MMM", { locale: ptBR });
       revenueByDay.set(key, (revenueByDay.get(key) || 0) + s.netValue);
     });
@@ -39,7 +48,7 @@ export const useDashboardMetrics = (): DashboardMetrics => {
 
     // Closer performance
     const closerMap = new Map<string, { sales: number; revenue: number }>();
-    paidSales.forEach((s) => {
+    filteredSales.forEach((s) => {
       const prev = closerMap.get(s.closer) || { sales: 0, revenue: 0 };
       closerMap.set(s.closer, { sales: prev.sales + 1, revenue: prev.revenue + s.netValue });
     });
@@ -55,7 +64,7 @@ export const useDashboardMetrics = (): DashboardMetrics => {
 
     // SDR performance
     const sdrMap = new Map<string, number>();
-    paidSales.forEach((s) => {
+    filteredSales.forEach((s) => {
       sdrMap.set(s.sdr, (sdrMap.get(s.sdr) || 0) + 1);
     });
     const totalSdrSales = quantidadeVendas || 1;
@@ -69,7 +78,7 @@ export const useDashboardMetrics = (): DashboardMetrics => {
 
     // Payment distribution
     const paymentMap = new Map<string, number>();
-    paidSales.forEach((s) => {
+    filteredSales.forEach((s) => {
       paymentMap.set(s.paymentMethod, (paymentMap.get(s.paymentMethod) || 0) + s.netValue);
     });
     const totalPayment = faturamentoLiquido || 1;
@@ -90,5 +99,5 @@ export const useDashboardMetrics = (): DashboardMetrics => {
       sdrData,
       paymentData,
     };
-  }, [sales]);
+  }, [sales, startDate, endDate]);
 };

@@ -4,6 +4,7 @@ import { ptBR } from "date-fns/locale";
 import { CalendarIcon, Save, X, DollarSign, Users, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSales } from "@/context/SalesContext";
+import { PAYMENT_METHODS, calculateNetValue, getFeeDescription } from "@/data/mockData";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,6 @@ import {
 } from "@/components/ui/popover";
 import { toast } from "sonner";
 
-const paymentMethods = ["Crédito", "PIX", "Boleto", "Outro"];
 const statuses = ["Pago", "Pendente", "Cancelado", "Reembolsado"];
 
 const AddSale = () => {
@@ -42,8 +42,9 @@ const AddSale = () => {
   const [status, setStatus] = useState("");
   const [notes, setNotes] = useState("");
 
+  const gross = parseFloat(grossValue) || 0;
   const calculatedNet = autoCalcNet
-    ? (parseFloat(grossValue) || 0) * 0.88
+    ? (paymentMethod ? calculateNetValue(gross, paymentMethod) : 0)
     : parseFloat(netValue) || 0;
 
   const closerCommission = calculatedNet * 0.1;
@@ -183,7 +184,9 @@ const AddSale = () => {
                     Valor Líquido
                   </Label>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">Auto (12% taxas)</span>
+                    <span className="text-xs text-muted-foreground">
+                      {paymentMethod ? `Auto (${getFeeDescription(paymentMethod)})` : "Auto — selecione o pagamento"}
+                    </span>
                     <Switch checked={autoCalcNet} onCheckedChange={setAutoCalcNet} />
                   </div>
                 </div>
@@ -217,8 +220,8 @@ const AddSale = () => {
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent className="bg-popover border-border z-50">
-                    {paymentMethods.map((m) => (
-                      <SelectItem key={m} value={m}>{m}</SelectItem>
+                    {PAYMENT_METHODS.map((m) => (
+                      <SelectItem key={m} value={m}>{m} <span className="text-muted-foreground ml-1">({getFeeDescription(m)})</span></SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

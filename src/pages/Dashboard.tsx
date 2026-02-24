@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { subDays } from "date-fns";
 import DateFilter from "@/components/dashboard/DateFilter";
 import KPICard from "@/components/dashboard/KPICard";
 import RevenueChart from "@/components/dashboard/RevenueChart";
@@ -12,12 +14,20 @@ const formatValue = (v: number) => {
 };
 
 const Dashboard = () => {
-  const metrics = useDashboardMetrics();
+  const [startDate, setStartDate] = useState<Date>(subDays(new Date(), 30));
+  const [endDate, setEndDate] = useState<Date>(new Date());
+
+  const metrics = useDashboardMetrics(startDate, endDate);
 
   return (
     <div className="p-6 lg:p-10">
       <div className="max-w-[1440px] mx-auto space-y-8">
-        <DateFilter />
+        <DateFilter
+          startDate={startDate}
+          endDate={endDate}
+          onStartDateChange={setStartDate}
+          onEndDateChange={setEndDate}
+        />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           <KPICard label="Faturamento Líquido" value={formatValue(metrics.faturamentoLiquido)} change={0} delay={0} />

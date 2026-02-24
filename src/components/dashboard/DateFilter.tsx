@@ -3,16 +3,50 @@ import { Calendar, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { format } from "date-fns";
+import { format, startOfDay, endOfDay, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
 const quickFilters = ["Hoje", "Últimos 7 dias", "Últimos 30 dias", "Personalizado"];
 
-const DateFilter = () => {
+interface DateFilterProps {
+  startDate: Date;
+  endDate: Date;
+  onStartDateChange: (d: Date) => void;
+  onEndDateChange: (d: Date) => void;
+}
+
+const DateFilter = ({ startDate, endDate, onStartDateChange, onEndDateChange }: DateFilterProps) => {
   const [activeFilter, setActiveFilter] = useState("Últimos 30 dias");
-  const [startDate, setStartDate] = useState<Date>(new Date(2025, 1, 1));
-  const [endDate, setEndDate] = useState<Date>(new Date());
+
+  const handleQuickFilter = (filter: string) => {
+    setActiveFilter(filter);
+    const today = new Date();
+    switch (filter) {
+      case "Hoje":
+        onStartDateChange(startOfDay(today));
+        onEndDateChange(endOfDay(today));
+        break;
+      case "Últimos 7 dias":
+        onStartDateChange(startOfDay(subDays(today, 7)));
+        onEndDateChange(endOfDay(today));
+        break;
+      case "Últimos 30 dias":
+        onStartDateChange(startOfDay(subDays(today, 30)));
+        onEndDateChange(endOfDay(today));
+        break;
+      case "Personalizado":
+        // keep current dates, user picks manually
+        break;
+    }
+  };
+
+  const handleManualDate = (setter: (d: Date) => void) => (d: Date | undefined) => {
+    if (d) {
+      setActiveFilter("Personalizado");
+      setter(d);
+    }
+  };
 
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -20,7 +54,7 @@ const DateFilter = () => {
         {quickFilters.map((filter) => (
           <button
             key={filter}
-            onClick={() => setActiveFilter(filter)}
+            onClick={() => handleQuickFilter(filter)}
             className={cn(
               "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
               activeFilter === filter
@@ -46,7 +80,7 @@ const DateFilter = () => {
             <CalendarComponent
               mode="single"
               selected={startDate}
-              onSelect={(d) => d && setStartDate(d)}
+              onSelect={handleManualDate(onStartDateChange)}
               className="p-3 pointer-events-auto"
             />
           </PopoverContent>
@@ -66,7 +100,7 @@ const DateFilter = () => {
             <CalendarComponent
               mode="single"
               selected={endDate}
-              onSelect={(d) => d && setEndDate(d)}
+              onSelect={handleManualDate(onEndDateChange)}
               className="p-3 pointer-events-auto"
             />
           </PopoverContent>
