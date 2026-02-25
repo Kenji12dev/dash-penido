@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { startOfMonth, endOfMonth } from "date-fns";
+import { startOfMonth } from "date-fns";
 import { useAuth } from "@/context/AuthContext";
 import DateFilter from "@/components/dashboard/DateFilter";
 import CalendarLinkCard from "@/components/dashboard/CalendarLinkCard";
@@ -20,7 +20,7 @@ const formatValue = (v: number) =>
 const Dashboard = () => {
   const { role } = useAuth();
   const [startDate, setStartDate] = useState<Date>(startOfMonth(new Date()));
-  const [endDate, setEndDate] = useState<Date>(endOfMonth(new Date()));
+  const [endDate, setEndDate] = useState<Date>(new Date());
   const [filters, setFilters] = useState<DashboardFilters>({});
 
   const metrics = useDashboardMetrics(startDate, endDate, filters);
