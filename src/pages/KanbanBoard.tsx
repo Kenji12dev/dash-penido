@@ -2,6 +2,7 @@ import { useState } from "react";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useSales, Sale } from "@/context/SalesContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Columns3, GripVertical, Plus, CalendarIcon, Save, X, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -154,7 +155,7 @@ const KanbanBoard = () => {
     setNewNotes("");
   };
 
-  const handleAddSave = () => {
+  const handleAddSave = async () => {
     if (!newClient || !newProduct || !newCloser || !newSdr || !newLeadSource) {
       toast.error("Preencha todos os campos obrigatórios.");
       return;
@@ -173,6 +174,29 @@ const KanbanBoard = () => {
       notes: newNotes.trim(),
     });
     toast.success("Agendamento criado!");
+
+    // Try to create Google Calendar event for the closer
+    try {
+      const { data, error } = await supabase.functions.invoke("google-calendar-event", {
+        body: {
+          collaborator_name: newCloser,
+          client_name: newClient.trim(),
+          product: newProduct,
+          date: newDate.toISOString(),
+          notes: newNotes.trim(),
+        },
+      });
+      if (data?.success) {
+        toast.success("📅 Evento criado no Google Calendar!", { duration: 4000 });
+      } else if (data?.skipped) {
+        // Calendar not linked — silently skip
+      } else if (error || data?.error) {
+        console.warn("Calendar event error:", data?.error || error?.message);
+      }
+    } catch (err) {
+      console.warn("Calendar integration error:", err);
+    }
+
     resetAddForm();
     setAddOpen(false);
   };

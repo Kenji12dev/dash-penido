@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { useSales } from "@/context/SalesContext";
@@ -27,7 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Users, Plus, Save, Loader2, Pencil, UserPlus, Trash2 } from "lucide-react";
+import { Users, Plus, Save, Loader2, Pencil, UserPlus, Trash2, CalendarDays, Check, ExternalLink } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,6 +48,7 @@ interface Collaborator {
   commission_rate: number;
   fixed_salary: number;
   user_id: string | null;
+  has_calendar?: boolean;
 }
 
 const formatPercent = (rate: number) => `${(rate * 100).toFixed(0)}%`;
@@ -85,6 +86,10 @@ const Collaborators = () => {
   const [deleteCollab, setDeleteCollab] = useState<Collaborator | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  // Google Calendar linking
+  const [calendarLinked, setCalendarLinked] = useState<Set<string>>(new Set());
+  const [calendarLinking, setCalendarLinking] = useState<string | null>(null);
+
   const fetchCollaborators = async () => {
     const { data, error } = await supabase
       .from("collaborators")
@@ -94,8 +99,47 @@ const Collaborators = () => {
     if (!error && data) {
       setCollaborators(data as Collaborator[]);
     }
+
+    // Check which collaborators have Google Calendar linked
+    const { data: tokens } = await supabase
+      .from("google_calendar_tokens")
+      .select("collaborator_id");
+    if (tokens) {
+      setCalendarLinked(new Set(tokens.map((t: any) => t.collaborator_id)));
+    }
+
     setLoading(false);
   };
+
+  // Handle OAuth callback from Google
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    const state = params.get("state"); // collaborator_id
+    if (code && state) {
+      // Clear URL params
+      window.history.replaceState({}, "", window.location.pathname);
+      // Exchange code for tokens
+      (async () => {
+        setCalendarLinking(state);
+        const { data, error } = await supabase.functions.invoke("google-calendar-auth", {
+          body: {
+            action: "exchange_code",
+            code,
+            redirect_uri: window.location.origin + "/collaborators",
+            collaborator_id: state,
+          },
+        });
+        setCalendarLinking(null);
+        if (data?.success) {
+          toast.success("Google Calendar vinculado com sucesso! 📅");
+          fetchCollaborators();
+        } else {
+          toast.error("Erro ao vincular: " + (data?.error || error?.message));
+        }
+      })();
+    }
+  }, []);
 
   useEffect(() => {
     fetchCollaborators();
@@ -193,6 +237,24 @@ const Collaborators = () => {
     }
   };
 
+  const handleLinkCalendar = async (collaboratorId: string) => {
+    setCalendarLinking(collaboratorId);
+    const { data, error } = await supabase.functions.invoke("google-calendar-auth", {
+      body: {
+        action: "get_auth_url",
+        redirect_uri: window.location.origin + "/collaborators",
+        collaborator_id: collaboratorId,
+      },
+    });
+    setCalendarLinking(null);
+    if (data?.url) {
+      window.location.href = data.url;
+    } else {
+      toast.error("Erro ao gerar link de autorização: " + (data?.error || error?.message));
+    }
+  };
+
+
 
   // Performance metrics per collaborator
   const getPerformance = (name: string, type: string) => {
@@ -276,7 +338,7 @@ const Collaborators = () => {
                       <TableHead>Vendas (Pago)</TableHead>
                       <TableHead>Caixa Gerado</TableHead>
                       <TableHead>Receita Líquida</TableHead>
-                      <TableHead className="w-[100px]">Ações</TableHead>
+                      <TableHead className="w-[140px]">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -292,6 +354,32 @@ const Collaborators = () => {
                           <TableCell>{formatCurrency(perf.totalRevenue)}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
+                              {calendarLinked.has(c.id) ? (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="text-emerald-500"
+                                  title="Google Calendar vinculado"
+                                  disabled
+                                >
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="text-blue-500 hover:text-blue-600"
+                                  title="Vincular Google Calendar"
+                                  onClick={() => handleLinkCalendar(c.id)}
+                                  disabled={calendarLinking === c.id}
+                                >
+                                  {calendarLinking === c.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <CalendarDays className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              )}
                               <Button
                                 size="icon"
                                 variant="ghost"

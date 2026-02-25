@@ -47,6 +47,44 @@ export type Database = {
         }
         Relationships: []
       }
+      google_calendar_tokens: {
+        Row: {
+          access_token: string
+          collaborator_id: string
+          created_at: string
+          id: string
+          refresh_token: string
+          token_expires_at: string
+          updated_at: string
+        }
+        Insert: {
+          access_token: string
+          collaborator_id: string
+          created_at?: string
+          id?: string
+          refresh_token: string
+          token_expires_at: string
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          collaborator_id?: string
+          created_at?: string
+          id?: string
+          refresh_token?: string
+          token_expires_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "google_calendar_tokens_collaborator_id_fkey"
+            columns: ["collaborator_id"]
+            isOneToOne: true
+            referencedRelation: "collaborators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
