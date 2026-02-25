@@ -17,10 +17,61 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Authenticate the caller
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const userClient = createClient(SUPABASE_URL, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const userId = claimsData.claims.sub;
+
     const { action, code, redirect_uri, collaborator_id } = await req.json();
 
+    // Verify the caller owns this collaborator or is admin
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    const { data: collab } = await supabase
+      .from("collaborators")
+      .select("user_id")
+      .eq("id", collaborator_id)
+      .single();
+
+    if (!collab) {
+      return new Response(JSON.stringify({ error: "Collaborator not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: isAdmin } = await supabase.rpc("has_role", {
+      _user_id: userId,
+      _role: "admin",
+    });
+
+    if (collab.user_id !== userId && !isAdmin) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (action === "get_auth_url") {
-      // Generate OAuth URL for a collaborator
       const params = new URLSearchParams({
         client_id: GOOGLE_CLIENT_ID,
         redirect_uri,
@@ -37,7 +88,6 @@ Deno.serve(async (req) => {
     }
 
     if (action === "exchange_code") {
-      // Exchange authorization code for tokens
       const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -50,19 +100,15 @@ Deno.serve(async (req) => {
         }),
       });
       const tokenData = await tokenRes.json();
-      console.log("Google token response status:", tokenRes.status);
-      console.log("Google token response:", JSON.stringify(tokenData));
 
       if (tokenData.error) {
-        console.error("Google OAuth error:", tokenData.error, tokenData.error_description);
+        console.error("Google OAuth error:", tokenData.error);
         return new Response(
           JSON.stringify({ error: tokenData.error_description || tokenData.error }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      // Store tokens in the database
-      const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
       const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
 
       const { error: dbError } = await supabase
@@ -78,7 +124,7 @@ Deno.serve(async (req) => {
         );
 
       if (dbError) {
-        return new Response(JSON.stringify({ error: dbError.message }), {
+        return new Response(JSON.stringify({ error: "Failed to store tokens" }), {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -94,7 +140,7 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
