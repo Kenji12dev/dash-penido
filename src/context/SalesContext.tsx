@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { getSeedSales } from "@/data/seedSales";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface Sale {
   id: string;
@@ -41,6 +42,26 @@ export const useSales = () => {
 
 export const SalesProvider = ({ children }: { children: ReactNode }) => {
   const [sales, setSales] = useState<Sale[]>(() => getSeedSales());
+  const [dbClosers, setDbClosers] = useState<string[]>([]);
+  const [dbSdrs, setDbSdrs] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchCollaborators = async () => {
+      const { data } = await supabase
+        .from("collaborators")
+        .select("name, type")
+        .order("name");
+      if (data) {
+        setDbClosers(data.filter((c) => c.type === "closer").map((c) => c.name));
+        setDbSdrs(data.filter((c) => c.type === "sdr").map((c) => c.name));
+      }
+    };
+    fetchCollaborators();
+  }, []);
+
+  // Merge DB collaborators with defaults, removing duplicates
+  const closers = Array.from(new Set([...dbClosers, ...defaultClosers]));
+  const sdrs = Array.from(new Set([...dbSdrs, ...defaultSdrs]));
 
   const addSale = (sale: Omit<Sale, "id">) => {
     setSales((prev) => [...prev, { ...sale, id: crypto.randomUUID() }]);
@@ -64,8 +85,8 @@ export const SalesProvider = ({ children }: { children: ReactNode }) => {
         updateSale,
         deleteSale,
         products: defaultProducts,
-        closers: defaultClosers,
-        sdrs: defaultSdrs,
+        closers,
+        sdrs,
       }}
     >
       {children}
