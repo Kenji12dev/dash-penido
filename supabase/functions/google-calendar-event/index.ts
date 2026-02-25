@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { collaborator_name, client_name, product, date, notes } = await req.json();
+    const { collaborator_name, client_name, product, date, start_time, end_time, notes } = await req.json();
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -86,17 +86,20 @@ Deno.serve(async (req) => {
 
     // Create Google Calendar event
     const eventDate = new Date(date);
-    const eventEnd = new Date(eventDate.getTime() + 60 * 60 * 1000); // 1 hour
+    const dateStr = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, '0')}-${String(eventDate.getDate()).padStart(2, '0')}`;
+    
+    const startDateTime = `${dateStr}T${start_time || '10:00'}:00`;
+    const endDateTime = `${dateStr}T${end_time || '11:00'}:00`;
 
     const event = {
       summary: `📞 ${client_name} — ${product}`,
       description: `Agendamento: ${client_name}\nProduto: ${product}\n${notes ? `Notas: ${notes}` : ""}`,
       start: {
-        dateTime: eventDate.toISOString(),
+        dateTime: startDateTime,
         timeZone: "America/Sao_Paulo",
       },
       end: {
-        dateTime: eventEnd.toISOString(),
+        dateTime: endDateTime,
         timeZone: "America/Sao_Paulo",
       },
       reminders: {

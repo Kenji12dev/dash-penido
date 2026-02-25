@@ -51,6 +51,8 @@ const KanbanBoard = () => {
   // Add dialog
   const [addOpen, setAddOpen] = useState(false);
   const [newDate, setNewDate] = useState<Date>(new Date());
+  const [newStartTime, setNewStartTime] = useState("10:00");
+  const [newEndTime, setNewEndTime] = useState("11:00");
   const [newClient, setNewClient] = useState("");
   const [newProduct, setNewProduct] = useState("");
   const [newCloser, setNewCloser] = useState("");
@@ -147,6 +149,8 @@ const KanbanBoard = () => {
   // Add new scheduling
   const resetAddForm = () => {
     setNewDate(new Date());
+    setNewStartTime("10:00");
+    setNewEndTime("11:00");
     setNewClient("");
     setNewProduct("");
     setNewCloser("");
@@ -183,6 +187,8 @@ const KanbanBoard = () => {
           client_name: newClient.trim(),
           product: newProduct,
           date: newDate.toISOString(),
+          start_time: newStartTime,
+          end_time: newEndTime,
           notes: newNotes.trim(),
         },
       });
@@ -343,6 +349,16 @@ const KanbanBoard = () => {
                   <Calendar mode="single" selected={newDate} onSelect={(d) => d && setNewDate(d)} className="p-3 pointer-events-auto" />
                 </PopoverContent>
               </Popover>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-muted-foreground">Início *</Label>
+                <Input type="time" value={newStartTime} onChange={(e) => setNewStartTime(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-muted-foreground">Fim *</Label>
+                <Input type="time" value={newEndTime} onChange={(e) => setNewEndTime(e.target.value)} />
+              </div>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-muted-foreground">Cliente *</Label>
