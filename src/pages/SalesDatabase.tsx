@@ -87,12 +87,12 @@ const SalesDatabase = () => {
     setEditData({});
   };
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!editingId) return;
     const netValue = editData.paymentMethod && editData.grossValue
       ? calculateNetValue(editData.grossValue, editData.paymentMethod)
       : undefined;
-    updateSale(editingId, { ...editData, ...(netValue !== undefined ? { netValue } : {}) });
+    await updateSale(editingId, { ...editData, ...(netValue !== undefined ? { netValue } : {}) });
     toast.success("Venda atualizada!");
     cancelEdit();
   };

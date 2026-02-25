@@ -142,6 +142,60 @@ export type Database = {
         }
         Relationships: []
       }
+      sales: {
+        Row: {
+          client_name: string
+          closer: string
+          created_at: string
+          date: string
+          down_payment: number | null
+          gross_value: number
+          id: string
+          lead_source: string | null
+          net_value: number
+          notes: string | null
+          payment_method: string
+          product: string
+          sdr: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          client_name: string
+          closer: string
+          created_at?: string
+          date?: string
+          down_payment?: number | null
+          gross_value?: number
+          id?: string
+          lead_source?: string | null
+          net_value?: number
+          notes?: string | null
+          payment_method: string
+          product: string
+          sdr: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          client_name?: string
+          closer?: string
+          created_at?: string
+          date?: string
+          down_payment?: number | null
+          gross_value?: number
+          id?: string
+          lead_source?: string | null
+          net_value?: number
+          notes?: string | null
+          payment_method?: string
+          product?: string
+          sdr?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string

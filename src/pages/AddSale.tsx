@@ -69,13 +69,13 @@ const AddSale = () => {
     setNotes("");
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!clientName || !product || !grossValue || !paymentMethod || !closer || !sdr || !status || !leadSource) {
       toast.error("Preencha todos os campos obrigatórios.");
       return;
     }
 
-    addSale({
+    await addSale({
       date,
       clientName: clientName.trim(),
       product,
