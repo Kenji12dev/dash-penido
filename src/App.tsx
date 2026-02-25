@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { SalesProvider } from "@/context/SalesContext";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import Index from "./pages/Index";
@@ -11,6 +11,12 @@ import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
+
+// Redirect /collaborators (OAuth callback) to / preserving query params
+const CollaboratorsRedirect = () => {
+  const location = useLocation();
+  return <Navigate to={`/${location.search}`} replace />;
+};
 
 const AuthGate = () => {
   const { user, loading } = useAuth();
@@ -32,6 +38,7 @@ const AuthGate = () => {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/collaborators" element={<CollaboratorsRedirect />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
