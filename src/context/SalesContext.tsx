@@ -200,14 +200,18 @@ export const SalesProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const deleteSale = async (id: string) => {
-    const { error } = await supabase
+    const { error, count } = await supabase
       .from("sales")
-      .delete()
+      .delete({ count: "exact" })
       .eq("id", id);
 
     if (error) {
       console.error("Error deleting sale:", error);
       toast.error("Erro ao excluir venda");
+      return;
+    }
+    if (count === 0) {
+      toast.error("Sem permissão para excluir esta venda");
       return;
     }
     setSales((prev) => prev.filter((s) => s.id !== id));
