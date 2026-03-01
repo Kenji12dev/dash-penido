@@ -27,7 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Users, Plus, Save, Loader2, Pencil, UserPlus, Trash2, CalendarDays, Check, ExternalLink } from "lucide-react";
+import { Users, Plus, Save, Loader2, Pencil, UserPlus, Trash2, CalendarDays, Check, ExternalLink, KeyRound } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -85,6 +85,13 @@ const Collaborators = () => {
   // Delete confirmation
   const [deleteCollab, setDeleteCollab] = useState<Collaborator | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Change password dialog
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [passwordUserId, setPasswordUserId] = useState("");
+  const [passwordNewValue, setPasswordNewValue] = useState("");
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [usersList, setUsersList] = useState<{ id: string; email: string; display_name: string }[]>([]);
 
   // Google Calendar linking
   const [calendarLinked, setCalendarLinked] = useState<Set<string>>(new Set());
@@ -253,7 +260,36 @@ const Collaborators = () => {
       toast.error("Erro ao gerar link de autorização: " + (data?.error || error?.message));
     }
   };
+  const fetchUsers = async () => {
+    const { data } = await supabase.from("profiles").select("user_id, email, display_name");
+    if (data) {
+      setUsersList(data.map((p) => ({ id: p.user_id, email: p.email || "", display_name: p.display_name })));
+    }
+  };
 
+  const handleChangePassword = async () => {
+    if (!passwordUserId || !passwordNewValue) {
+      toast.error("Selecione o usuário e informe a nova senha.");
+      return;
+    }
+    if (passwordNewValue.length < 6) {
+      toast.error("A senha deve ter no mínimo 6 caracteres.");
+      return;
+    }
+    setPasswordLoading(true);
+    const { data, error } = await supabase.functions.invoke("change-user-password", {
+      body: { user_id: passwordUserId, new_password: passwordNewValue },
+    });
+    setPasswordLoading(false);
+    if (error || data?.error) {
+      toast.error(data?.error || error?.message || "Erro ao alterar senha");
+    } else {
+      toast.success("Senha alterada com sucesso!");
+      setPasswordOpen(false);
+      setPasswordUserId("");
+      setPasswordNewValue("");
+    }
+  };
 
 
   // Performance metrics per collaborator
@@ -287,6 +323,10 @@ const Collaborators = () => {
             <Button onClick={() => setAddCollabOpen(true)} size="sm" variant="outline" className="w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-1" />
               Novo Colaborador
+            </Button>
+            <Button onClick={() => { setPasswordOpen(true); fetchUsers(); }} size="sm" variant="outline" className="w-full sm:w-auto">
+              <KeyRound className="h-4 w-4 mr-1" />
+              Alterar Senha
             </Button>
             <Button onClick={() => setAddOpen(true)} size="sm" className="w-full sm:w-auto">
               <UserPlus className="h-4 w-4 mr-1" />
@@ -625,6 +665,43 @@ const Collaborators = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Change password dialog */}
+      <Dialog open={passwordOpen} onOpenChange={setPasswordOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Alterar Senha</DialogTitle>
+            <DialogDescription>Selecione o usuário e defina a nova senha.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-muted-foreground">Usuário</Label>
+              <Select value={passwordUserId} onValueChange={setPasswordUserId}>
+                <SelectTrigger><SelectValue placeholder="Selecione um usuário" /></SelectTrigger>
+                <SelectContent>
+                  {usersList.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.display_name} ({u.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-muted-foreground">Nova Senha</Label>
+              <Input
+                type="password"
+                value={passwordNewValue}
+                onChange={(e) => setPasswordNewValue(e.target.value)}
+                placeholder="Mínimo 6 caracteres"
+              />
+            </div>
+            <Button onClick={handleChangePassword} disabled={passwordLoading} className="w-full">
+              {passwordLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><KeyRound className="h-4 w-4 mr-1" /> Alterar Senha</>}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
