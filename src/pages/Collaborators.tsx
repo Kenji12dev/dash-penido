@@ -66,20 +66,15 @@ const Collaborators = () => {
   const [editRate, setEditRate] = useState("");
   const [editFixedSalary, setEditFixedSalary] = useState("");
 
-  // Add user dialog
-  const [addOpen, setAddOpen] = useState(false);
-  const [newEmail, setNewEmail] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [newName, setNewName] = useState("");
-  const [newRole, setNewRole] = useState<string>("colaborador");
-  const [addLoading, setAddLoading] = useState(false);
-
-  // Add collaborator dialog
+  // Add collaborator + user dialog (unified)
   const [addCollabOpen, setAddCollabOpen] = useState(false);
   const [newCollabName, setNewCollabName] = useState("");
   const [newCollabType, setNewCollabType] = useState<string>("closer");
   const [newCollabRate, setNewCollabRate] = useState("");
   const [newCollabFixedSalary, setNewCollabFixedSalary] = useState("");
+  const [newCollabEmail, setNewCollabEmail] = useState("");
+  const [newCollabPassword, setNewCollabPassword] = useState("");
+  const [newCollabRole, setNewCollabRole] = useState<string>("colaborador");
   const [addCollabLoading, setAddCollabLoading] = useState(false);
 
   // Delete confirmation
@@ -177,31 +172,9 @@ const Collaborators = () => {
     }
   };
 
-  const handleAddUser = async () => {
-    if (!newEmail || !newPassword || !newName) {
-      toast.error("Preencha todos os campos.");
-      return;
-    }
-    setAddLoading(true);
-    const { data, error } = await supabase.functions.invoke("create-user", {
-      body: { email: newEmail, password: newPassword, displayName: newName, role: newRole },
-    });
-    setAddLoading(false);
-    if (error || data?.error) {
-      toast.error(data?.error || error?.message || "Erro ao criar usuário");
-    } else {
-      toast.success("Usuário criado com sucesso!");
-      setAddOpen(false);
-      setNewEmail("");
-      setNewPassword("");
-      setNewName("");
-      setNewRole("colaborador");
-    }
-  };
-
   const handleAddCollab = async () => {
-    if (!newCollabName || !newCollabType) {
-      toast.error("Preencha todos os campos.");
+    if (!newCollabName || !newCollabType || !newCollabEmail || !newCollabPassword) {
+      toast.error("Preencha todos os campos obrigatórios.");
       return;
     }
     const rate = parseFloat(newCollabRate) / 100;
@@ -209,20 +182,45 @@ const Collaborators = () => {
       toast.error("Taxa inválida (0-100%)");
       return;
     }
+    if (newCollabPassword.length < 6) {
+      toast.error("A senha deve ter no mínimo 6 caracteres.");
+      return;
+    }
     setAddCollabLoading(true);
-    const { error } = await supabase
+
+    // 1. Create user account
+    const { data: userData, error: userError } = await supabase.functions.invoke("create-user", {
+      body: { email: newCollabEmail, password: newCollabPassword, displayName: newCollabName.trim(), role: newCollabRole },
+    });
+    if (userError || userData?.error) {
+      setAddCollabLoading(false);
+      toast.error(userData?.error || userError?.message || "Erro ao criar usuário");
+      return;
+    }
+
+    // 2. Create collaborator record
+    const { error: collabError } = await supabase
       .from("collaborators")
-      .insert({ name: newCollabName.trim(), type: newCollabType, commission_rate: rate, fixed_salary: parseFloat(newCollabFixedSalary) || 0 });
+      .insert({
+        name: newCollabName.trim(),
+        type: newCollabType,
+        commission_rate: rate,
+        fixed_salary: parseFloat(newCollabFixedSalary) || 0,
+        user_id: userData?.user?.id || null,
+      });
     setAddCollabLoading(false);
-    if (error) {
-      toast.error("Erro: " + error.message);
+    if (collabError) {
+      toast.error("Usuário criado, mas erro ao adicionar colaborador: " + collabError.message);
     } else {
-      toast.success("Colaborador adicionado!");
+      toast.success("Colaborador e usuário criados com sucesso!");
       setAddCollabOpen(false);
       setNewCollabName("");
       setNewCollabType("closer");
       setNewCollabRate("");
       setNewCollabFixedSalary("");
+      setNewCollabEmail("");
+      setNewCollabPassword("");
+      setNewCollabRole("colaborador");
       fetchCollaborators();
     }
   };
@@ -327,10 +325,6 @@ const Collaborators = () => {
             <Button onClick={() => { setPasswordOpen(true); fetchUsers(); }} size="sm" variant="outline" className="w-full sm:w-auto">
               <KeyRound className="h-4 w-4 mr-1" />
               Alterar Senha
-            </Button>
-            <Button onClick={() => setAddOpen(true)} size="sm" className="w-full sm:w-auto">
-              <UserPlus className="h-4 w-4 mr-1" />
-              Criar Usuário
             </Button>
           </div>
         </div>
@@ -570,54 +564,17 @@ const Collaborators = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Add user dialog */}
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Criar Novo Usuário</DialogTitle>
-            <DialogDescription>O usuário receberá acesso ao sistema.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 mt-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground">Nome</Label>
-              <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nome completo" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground">Email</Label>
-              <Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="email@exemplo.com" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground">Senha</Label>
-              <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground">Tipo de Acesso</Label>
-              <Select value={newRole} onValueChange={setNewRole}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="colaborador">Colaborador</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button onClick={handleAddUser} disabled={addLoading} className="w-full">
-              {addLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><UserPlus className="h-4 w-4 mr-1" /> Criar Usuário</>}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Add collaborator dialog */}
+      {/* Add collaborator + user dialog (unified) */}
       <Dialog open={addCollabOpen} onOpenChange={setAddCollabOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Novo Colaborador</DialogTitle>
-            <DialogDescription>Adicione um closer ou SDR ao sistema.</DialogDescription>
+            <DialogDescription>Cria o colaborador e o acesso ao sistema de uma vez.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 mt-2">
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-muted-foreground">Nome</Label>
-              <Input value={newCollabName} onChange={(e) => setNewCollabName(e.target.value)} placeholder="Nome do colaborador" />
+              <Input value={newCollabName} onChange={(e) => setNewCollabName(e.target.value)} placeholder="Nome completo" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-muted-foreground">Tipo</Label>
@@ -637,12 +594,34 @@ const Collaborators = () => {
               <Label className="text-xs font-semibold text-muted-foreground">Salário Fixo (R$)</Label>
               <Input type="number" min="0" step="100" value={newCollabFixedSalary} onChange={(e) => setNewCollabFixedSalary(e.target.value)} placeholder="Ex: 2000" />
             </div>
+            <div className="h-px bg-border" />
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Acesso ao Sistema</p>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-muted-foreground">Email</Label>
+              <Input type="email" value={newCollabEmail} onChange={(e) => setNewCollabEmail(e.target.value)} placeholder="email@exemplo.com" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-muted-foreground">Senha</Label>
+              <Input type="password" value={newCollabPassword} onChange={(e) => setNewCollabPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-muted-foreground">Tipo de Acesso</Label>
+              <Select value={newCollabRole} onValueChange={setNewCollabRole}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="colaborador">Colaborador</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <Button onClick={handleAddCollab} disabled={addCollabLoading} className="w-full">
-              {addCollabLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Plus className="h-4 w-4 mr-1" /> Adicionar</>}
+              {addCollabLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><UserPlus className="h-4 w-4 mr-1" /> Criar Colaborador</>}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
+
+
 
       {/* Delete confirmation dialog */}
       <AlertDialog open={!!deleteCollab} onOpenChange={(open) => !open && setDeleteCollab(null)}>
