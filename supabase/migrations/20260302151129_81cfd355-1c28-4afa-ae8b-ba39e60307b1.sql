@@ -1,0 +1,1 @@
+ALTER TABLE public.sales ADD COLUMN down_payment_method TEXT;

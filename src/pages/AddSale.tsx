@@ -43,6 +43,7 @@ const AddSale = () => {
   const [status, setStatus] = useState("");
   const [leadSource, setLeadSource] = useState("");
   const [downPayment, setDownPayment] = useState("");
+  const [downPaymentMethod, setDownPaymentMethod] = useState("");
   const [notes, setNotes] = useState("");
 
   const gross = parseFloat(grossValue) || 0;
@@ -67,6 +68,7 @@ const AddSale = () => {
     setStatus("");
     setLeadSource("");
     setDownPayment("");
+    setDownPaymentMethod("");
     setNotes("");
   };
 
@@ -88,6 +90,7 @@ const AddSale = () => {
       status,
       leadSource,
       downPayment: paymentMethod === "TMB" && downPayment ? parseFloat(downPayment) : undefined,
+      downPaymentMethod: paymentMethod === "TMB" && downPaymentMethod ? downPaymentMethod : undefined,
       notes: notes.trim(),
     });
 
@@ -223,6 +226,25 @@ const AddSale = () => {
                   />
                 </div>
                 <p className="text-[11px] text-muted-foreground">Valor que entra no caixa (boleto)</p>
+              </div>
+              )}
+
+              {/* Forma de Pagamento da Entrada (TMB only) */}
+              {paymentMethod === "TMB" && (
+              <div className="space-y-2">
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                  Forma de Pgto da Entrada
+                </Label>
+                <Select value={downPaymentMethod} onValueChange={setDownPaymentMethod}>
+                  <SelectTrigger className="bg-secondary border-border">
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover border-border z-50">
+                    {PAYMENT_METHODS.filter(m => m !== "TMB").map((m) => (
+                      <SelectItem key={m} value={m}>{m}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               )}
 
@@ -387,6 +409,7 @@ const AddSale = () => {
                   <span className="text-muted-foreground">Entrada (Caixa)</span>
                   <span className="font-semibold text-foreground">
                     R$ {(parseFloat(downPayment) || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    {downPaymentMethod && <span className="text-muted-foreground ml-1 text-xs">({downPaymentMethod})</span>}
                   </span>
                 </div>
                 )}

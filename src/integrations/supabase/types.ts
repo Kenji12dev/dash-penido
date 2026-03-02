@@ -149,6 +149,7 @@ export type Database = {
           created_at: string
           date: string
           down_payment: number | null
+          down_payment_method: string | null
           gross_value: number
           id: string
           lead_source: string | null
@@ -166,6 +167,7 @@ export type Database = {
           created_at?: string
           date?: string
           down_payment?: number | null
+          down_payment_method?: string | null
           gross_value?: number
           id?: string
           lead_source?: string | null
@@ -183,6 +185,7 @@ export type Database = {
           created_at?: string
           date?: string
           down_payment?: number | null
+          down_payment_method?: string | null
           gross_value?: number
           id?: string
           lead_source?: string | null
