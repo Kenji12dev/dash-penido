@@ -33,7 +33,9 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { collaborator_name, client_name, product, date, start_time, end_time, notes } = await req.json();
+    const body = await req.json();
+    const { collaborator_name, client_name, product, date, start_time, end_time, notes } = body;
+    console.log("Received request:", JSON.stringify({ collaborator_name, client_name, product, date, start_time, end_time }));
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -45,11 +47,13 @@ Deno.serve(async (req) => {
       .single();
 
     if (!collaborator) {
+      console.log("Collaborator NOT found for name:", collaborator_name);
       return new Response(
         JSON.stringify({ error: "Colaborador não encontrado", skipped: true }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    console.log("Collaborator found:", collaborator.id);
 
     // Get tokens
     const { data: tokenRow } = await supabase
@@ -59,11 +63,13 @@ Deno.serve(async (req) => {
       .single();
 
     if (!tokenRow) {
+      console.log("No token found for collaborator:", collaborator.id);
       return new Response(
         JSON.stringify({ error: "Google Calendar não vinculado para este colaborador", skipped: true }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    console.log("Token found, expires at:", tokenRow.token_expires_at);
 
     let accessToken = tokenRow.access_token;
 
@@ -124,6 +130,7 @@ Deno.serve(async (req) => {
     );
 
     const calData = await calRes.json();
+    console.log("Google Calendar API response:", calRes.status, JSON.stringify(calData));
 
     if (!calRes.ok) {
       return new Response(
