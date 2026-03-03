@@ -63,11 +63,27 @@ Deno.serve(async (req) => {
       _role: "admin",
     });
 
+    // Allow owner/admin. If collaborator is unclaimed, atomically claim it for this user.
     if (collab.user_id !== userId && !isAdmin) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      if (collab.user_id === null) {
+        const { error: claimError } = await supabase
+          .from("collaborators")
+          .update({ user_id: userId })
+          .eq("id", collaborator_id)
+          .is("user_id", null);
+
+        if (claimError) {
+          return new Response(JSON.stringify({ error: "Failed to link collaborator" }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      } else {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     if (action === "get_auth_url") {
