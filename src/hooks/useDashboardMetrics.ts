@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useSales } from "@/context/SalesContext";
 import { format, isWithinInterval, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { PAYMENT_METHOD_MAP, LEAD_SOURCE_MAP, CHART_COLORS } from "@/data/mockData";
+import { PAYMENT_METHOD_MAP, LEAD_SOURCE_MAP, CHART_COLORS, calculateHybridCaixa } from "@/data/mockData";
 
 export interface DashboardFilters {
   closer?: string;
@@ -80,6 +80,10 @@ export const useDashboardMetrics = (
 
     const faturamentoLiquido = filteredSales.reduce((sum, s) => sum + s.netValue, 0);
     const caixaGerado = filteredSales.reduce((sum, s) => {
+      // Venda Híbrida: caixa = soma dos valores não-TMB
+      if (s.paymentMethod === "Venda Híbrida" && s.hybridPayments) {
+        return sum + calculateHybridCaixa(s.hybridPayments);
+      }
       // For TMB sales with a down payment, use down payment as cash generated
       if (s.paymentMethod === "TMB" && s.downPayment != null) {
         return sum + s.downPayment;

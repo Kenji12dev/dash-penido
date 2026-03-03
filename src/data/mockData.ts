@@ -21,6 +21,7 @@ export const PAYMENT_METHODS = [
   "Infinity Pay",
   "Hotmart",
   "Boleto Hubla",
+  "Venda Híbrida",
 ] as const;
 
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
@@ -61,9 +62,28 @@ export const calculateNetValue = (grossValue: number, method: string): number =>
       return grossValue * 1.00;
     case "Boleto Hubla":
       return grossValue * 1.00;
+    case "Venda Híbrida":
+      return grossValue; // calculated per-line
     default:
       return 0;
   }
+};
+
+export interface HybridPayment {
+  method: string;
+  value: number;
+  downPayment?: number;
+}
+
+export const calculateHybridNetValue = (payments: HybridPayment[]): number => {
+  return payments.reduce((sum, p) => sum + calculateNetValue(p.value, p.method), 0);
+};
+
+export const calculateHybridCaixa = (payments: HybridPayment[]): number => {
+  return payments.reduce((sum, p) => {
+    if (p.method === "TMB") return sum; // TMB não conta como caixa em híbrida
+    return sum + p.value;
+  }, 0);
 };
 
 export const getFeeDescription = (method: string): string => {
@@ -78,6 +98,7 @@ export const getFeeDescription = (method: string): string => {
     case "Infinity Pay": return "Sem taxa";
     case "Hotmart": return "Sem taxa";
     case "Boleto Hubla": return "Sem taxa";
+    case "Venda Híbrida": return "Múltiplos métodos";
     default: return "";
   }
 };
@@ -93,6 +114,7 @@ export const PAYMENT_METHOD_MAP: Record<string, { label: string; color: string }
   "Infinity Pay": { label: "Infinity Pay", color: CHART_COLORS[7] },
   "Hotmart": { label: "Hotmart", color: CHART_COLORS[8] },
   "Boleto Hubla": { label: "Boleto Hubla", color: CHART_COLORS[0] },
+  "Venda Híbrida": { label: "Venda Híbrida", color: CHART_COLORS[8] },
 };
 
 export const LEAD_SOURCES = [

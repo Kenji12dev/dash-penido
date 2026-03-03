@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Save, X, DollarSign, Users, TrendingUp } from "lucide-react";
+import { CalendarIcon, Save, X, DollarSign, Users, TrendingUp, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSales } from "@/context/SalesContext";
 
-import { PAYMENT_METHODS, LEAD_SOURCES, calculateNetValue, getFeeDescription, getCloserCommissionRate, SDR_COMMISSION_RATE } from "@/data/mockData";
+import { PAYMENT_METHODS, LEAD_SOURCES, calculateNetValue, getFeeDescription, getCloserCommissionRate, SDR_COMMISSION_RATE, HybridPayment, calculateHybridNetValue, calculateHybridCaixa } from "@/data/mockData";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ import {
 import { toast } from "sonner";
 
 const statuses = ["Pago", "Pendente", "Follow Up", "Loss", "Reembolsado"];
+const NON_HYBRID_METHODS = PAYMENT_METHODS.filter(m => m !== "Venda Híbrida");
 
 const AddSale = () => {
   const { addSale, products, closers, sdrs } = useSales();
@@ -43,18 +44,45 @@ const AddSale = () => {
   const [status, setStatus] = useState("");
   const [leadSource, setLeadSource] = useState("");
   const [downPayment, setDownPayment] = useState("");
-  const [downPaymentMethod, setDownPaymentMethod] = useState("");
   const [notes, setNotes] = useState("");
 
+  // Hybrid payments
+  const [hybridPayments, setHybridPayments] = useState<HybridPayment[]>([
+    { method: "", value: 0 },
+    { method: "", value: 0 },
+  ]);
+
+  const isHybrid = paymentMethod === "Venda Híbrida";
   const gross = parseFloat(grossValue) || 0;
+
   const calculatedNet = autoCalcNet
-    ? (paymentMethod ? calculateNetValue(gross, paymentMethod) : 0)
+    ? isHybrid
+      ? calculateHybridNetValue(hybridPayments.filter(p => p.method && p.value > 0))
+      : (paymentMethod ? calculateNetValue(gross, paymentMethod) : 0)
     : parseFloat(netValue) || 0;
+
+  const hybridHasTMB = isHybrid && hybridPayments.some(p => p.method === "TMB");
 
   const closerRate = closer ? getCloserCommissionRate(closer) : 0;
   const closerCommission = calculatedNet * closerRate;
   const sdrCommission = calculatedNet * SDR_COMMISSION_RATE;
   const netMargin = grossValue ? ((calculatedNet / parseFloat(grossValue)) * 100) : 0;
+
+  const addHybridRow = () => {
+    setHybridPayments(prev => [...prev, { method: "", value: 0 }]);
+  };
+
+  const removeHybridRow = (index: number) => {
+    if (hybridPayments.length <= 2) return;
+    setHybridPayments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updateHybridRow = (index: number, field: keyof HybridPayment, val: any) => {
+    setHybridPayments(prev => prev.map((p, i) => i === index ? { ...p, [field]: val } : p));
+  };
+
+  // Auto-calc gross from hybrid sum
+  const hybridTotal = hybridPayments.reduce((sum, p) => sum + (p.value || 0), 0);
 
   const resetForm = () => {
     setDate(new Date());
@@ -68,33 +96,63 @@ const AddSale = () => {
     setStatus("");
     setLeadSource("");
     setDownPayment("");
-    setDownPaymentMethod("");
     setNotes("");
+    setHybridPayments([{ method: "", value: 0 }, { method: "", value: 0 }]);
   };
 
   const handleSave = async () => {
-    if (!clientName || !product || !grossValue || !paymentMethod || !closer || !sdr || !status || !leadSource) {
+    if (!clientName || !product || !paymentMethod || !closer || !sdr || !status || !leadSource) {
       toast.error("Preencha todos os campos obrigatórios.");
       return;
     }
 
-    const createdSale = await addSale({
-      date,
-      clientName: clientName.trim(),
-      product,
-      grossValue: parseFloat(grossValue),
-      netValue: calculatedNet,
-      paymentMethod,
-      closer,
-      sdr,
-      status,
-      leadSource,
-      downPayment: paymentMethod === "TMB" && downPayment ? parseFloat(downPayment) : undefined,
-      downPaymentMethod: paymentMethod === "TMB" && downPaymentMethod ? downPaymentMethod : undefined,
-      notes: notes.trim(),
-    });
+    if (isHybrid) {
+      const validPayments = hybridPayments.filter(p => p.method && p.value > 0);
+      if (validPayments.length < 2) {
+        toast.error("Venda Híbrida precisa de pelo menos 2 métodos de pagamento.");
+        return;
+      }
 
-    if (!createdSale) return;
+      const createdSale = await addSale({
+        date,
+        clientName: clientName.trim(),
+        product,
+        grossValue: hybridTotal,
+        netValue: calculateHybridNetValue(validPayments),
+        paymentMethod: "Venda Híbrida",
+        closer,
+        sdr,
+        status,
+        leadSource,
+        downPayment: hybridHasTMB && downPayment ? parseFloat(downPayment) : undefined,
+        notes: notes.trim(),
+        hybridPayments: validPayments,
+      });
+
+      if (!createdSale) return;
+    } else {
+      if (!grossValue) {
+        toast.error("Preencha o valor bruto.");
+        return;
+      }
+      const createdSale = await addSale({
+        date,
+        clientName: clientName.trim(),
+        product,
+        grossValue: parseFloat(grossValue),
+        netValue: calculatedNet,
+        paymentMethod,
+        closer,
+        sdr,
+        status,
+        leadSource,
+        downPayment: paymentMethod === "TMB" && downPayment ? parseFloat(downPayment) : undefined,
+        notes: notes.trim(),
+      });
+
+      if (!createdSale) return;
+    }
+
     toast.success("Venda salva com sucesso!");
     resetForm();
   };
@@ -172,31 +230,15 @@ const AddSale = () => {
                 </Select>
               </div>
 
-              {/* Valor Bruto */}
-              <div className="space-y-2">
-                <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-                  Valor da Venda (Bruto)
-                </Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="0,00"
-                    value={grossValue}
-                    onChange={(e) => setGrossValue(e.target.value)}
-                    className="bg-secondary border-border pl-10"
-                  />
-                </div>
-              </div>
-
-              {/* Método de Pagamento — moved before Valor Líquido */}
+              {/* Método de Pagamento */}
               <div className="space-y-2">
                 <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
                   Método de Pagamento
                 </Label>
-                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                <Select value={paymentMethod} onValueChange={(v) => {
+                  setPaymentMethod(v);
+                  if (v !== "TMB" && v !== "Venda Híbrida") setDownPayment("");
+                }}>
                   <SelectTrigger className="bg-secondary border-border">
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
@@ -205,48 +247,127 @@ const AddSale = () => {
                       <SelectItem key={m} value={m}>{m} <span className="text-muted-foreground ml-1">({getFeeDescription(m)})</span></SelectItem>
                     ))}
                   </SelectContent>
-              </Select>
-              </div>
-
-              {/* Valor de Entrada (TMB only) */}
-              {paymentMethod === "TMB" && (
-              <div className="space-y-2">
-                <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-                  Valor de Entrada (1ª parcela)
-                </Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="0,00"
-                    value={downPayment}
-                    onChange={(e) => setDownPayment(e.target.value)}
-                    className="bg-secondary border-border pl-10"
-                  />
-                </div>
-                <p className="text-[11px] text-muted-foreground">Valor que entra no caixa (boleto)</p>
-              </div>
-              )}
-
-              {/* Forma de Pagamento da Entrada (TMB only) */}
-              {paymentMethod === "TMB" && (
-              <div className="space-y-2">
-                <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-                  Forma de Pgto da Entrada
-                </Label>
-                <Select value={downPaymentMethod} onValueChange={setDownPaymentMethod}>
-                  <SelectTrigger className="bg-secondary border-border">
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-popover border-border z-50">
-                    {PAYMENT_METHODS.filter(m => m !== "TMB").map((m) => (
-                      <SelectItem key={m} value={m}>{m}</SelectItem>
-                    ))}
-                  </SelectContent>
                 </Select>
               </div>
+
+              {/* Non-hybrid: Valor Bruto */}
+              {!isHybrid && (
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                    Valor da Venda (Bruto)
+                  </Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0,00"
+                      value={grossValue}
+                      onChange={(e) => setGrossValue(e.target.value)}
+                      className="bg-secondary border-border pl-10"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* TMB: Valor de Entrada */}
+              {paymentMethod === "TMB" && (
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                    Valor de Entrada (1ª parcela)
+                  </Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">R$</span>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0,00"
+                      value={downPayment}
+                      onChange={(e) => setDownPayment(e.target.value)}
+                      className="bg-secondary border-border pl-10"
+                    />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">Valor que entra no caixa (boleto)</p>
+                </div>
+              )}
+
+              {/* Hybrid Payments Section */}
+              {isHybrid && (
+                <div className="md:col-span-2 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                      Parcelas da Venda Híbrida
+                    </Label>
+                    <Button type="button" variant="outline" size="sm" onClick={addHybridRow}>
+                      <Plus className="h-3 w-3 mr-1" /> Adicionar
+                    </Button>
+                  </div>
+                  <div className="space-y-3">
+                    {hybridPayments.map((hp, idx) => (
+                      <div key={idx} className="flex items-end gap-3 p-3 bg-secondary/50 rounded-lg border border-border">
+                        <div className="flex-1 space-y-1.5">
+                          <Label className="text-[10px] text-muted-foreground">Método</Label>
+                          <Select value={hp.method} onValueChange={(v) => updateHybridRow(idx, "method", v)}>
+                            <SelectTrigger className="bg-secondary border-border h-9">
+                              <SelectValue placeholder="Selecione" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-popover border-border z-50">
+                              {NON_HYBRID_METHODS.map((m) => (
+                                <SelectItem key={m} value={m}>{m} <span className="text-muted-foreground ml-1">({getFeeDescription(m)})</span></SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="w-32 space-y-1.5">
+                          <Label className="text-[10px] text-muted-foreground">Valor (R$)</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="0,00"
+                            value={hp.value || ""}
+                            onChange={(e) => updateHybridRow(idx, "value", parseFloat(e.target.value) || 0)}
+                            className="bg-secondary border-border h-9"
+                          />
+                        </div>
+                        {hp.method === "TMB" && (
+                          <div className="w-32 space-y-1.5">
+                            <Label className="text-[10px] text-muted-foreground">Entrada</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0,00"
+                              value={hp.downPayment || ""}
+                              onChange={(e) => updateHybridRow(idx, "downPayment", parseFloat(e.target.value) || 0)}
+                              className="bg-secondary border-border h-9"
+                            />
+                          </div>
+                        )}
+                        <div className="w-24 text-right">
+                          <span className="text-xs text-muted-foreground">
+                            Líq: R$ {hp.method && hp.value ? calculateNetValue(hp.value, hp.method).toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : "0,00"}
+                          </span>
+                        </div>
+                        {hybridPayments.length > 2 && (
+                          <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-destructive" onClick={() => removeHybridRow(idx)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between bg-secondary/30 rounded-lg p-3 border border-border">
+                    <span className="text-xs text-muted-foreground">Total Bruto:</span>
+                    <span className="text-sm font-semibold text-foreground">R$ {hybridTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex items-center justify-between bg-secondary/30 rounded-lg p-3 border border-border">
+                    <span className="text-xs text-muted-foreground">Caixa Gerado (sem TMB):</span>
+                    <span className="text-sm font-semibold text-foreground">R$ {calculateHybridCaixa(hybridPayments.filter(p => p.method && p.value > 0)).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                  </div>
+                </div>
               )}
 
               {/* Closer */}
@@ -272,14 +393,16 @@ const AddSale = () => {
                   <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
                     Valor Líquido
                   </Label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      {paymentMethod ? `Auto (${getFeeDescription(paymentMethod)})` : "Auto — selecione o pagamento"}
-                    </span>
-                    <Switch checked={autoCalcNet} onCheckedChange={setAutoCalcNet} />
-                  </div>
+                  {!isHybrid && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        {paymentMethod ? `Auto (${getFeeDescription(paymentMethod)})` : "Auto — selecione o pagamento"}
+                      </span>
+                      <Switch checked={autoCalcNet} onCheckedChange={setAutoCalcNet} />
+                    </div>
+                  )}
                 </div>
-                {autoCalcNet ? (
+                {autoCalcNet || isHybrid ? (
                   <div className="h-10 flex items-center px-3 rounded-md bg-secondary border border-border text-sm text-foreground">
                     R$ {calculatedNet.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </div>
@@ -396,7 +519,7 @@ const AddSale = () => {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Bruto</span>
                   <span className="font-semibold text-foreground">
-                    R$ {(parseFloat(grossValue) || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    R$ {(isHybrid ? hybridTotal : (parseFloat(grossValue) || 0)).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -410,7 +533,14 @@ const AddSale = () => {
                   <span className="text-muted-foreground">Entrada (Caixa)</span>
                   <span className="font-semibold text-foreground">
                     R$ {(parseFloat(downPayment) || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                    {downPaymentMethod && <span className="text-muted-foreground ml-1 text-xs">({downPaymentMethod})</span>}
+                  </span>
+                </div>
+                )}
+                {isHybrid && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Caixa (sem TMB)</span>
+                  <span className="font-semibold text-foreground">
+                    R$ {calculateHybridCaixa(hybridPayments.filter(p => p.method && p.value > 0)).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </span>
                 </div>
                 )}
@@ -418,7 +548,9 @@ const AddSale = () => {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Margem Líquida</span>
                   <span className={cn("font-semibold", netMargin > 80 ? "text-success" : "text-foreground")}>
-                    {netMargin.toFixed(1)}%
+                    {isHybrid && hybridTotal > 0
+                      ? ((calculatedNet / hybridTotal) * 100).toFixed(1)
+                      : netMargin.toFixed(1)}%
                   </span>
                 </div>
               </div>
@@ -477,6 +609,12 @@ const AddSale = () => {
                     <span className="text-foreground">{paymentMethod}</span>
                   </div>
                 )}
+                {isHybrid && hybridPayments.filter(p => p.method).map((hp, i) => (
+                  <div key={i} className="flex justify-between pl-4">
+                    <span className="text-muted-foreground text-xs">{hp.method}</span>
+                    <span className="text-foreground text-xs">R$ {(hp.value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                  </div>
+                ))}
                 {status && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Status</span>

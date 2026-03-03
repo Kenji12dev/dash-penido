@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getSeedSales } from "@/data/seedSales";
+import { HybridPayment } from "@/data/mockData";
 import { toast } from "sonner";
 
 export interface Sale {
@@ -16,8 +17,8 @@ export interface Sale {
   status: string;
   leadSource: string;
   downPayment?: number;
-  downPaymentMethod?: string;
   notes: string;
+  hybridPayments?: HybridPayment[];
 }
 
 interface SalesContextType {
@@ -57,8 +58,8 @@ const mapRow = (row: any): Sale => ({
   status: row.status,
   leadSource: row.lead_source || "",
   downPayment: row.down_payment != null ? Number(row.down_payment) : undefined,
-  downPaymentMethod: row.down_payment_method || undefined,
   notes: row.notes || "",
+  hybridPayments: row.hybrid_payments ? (row.hybrid_payments as HybridPayment[]) : undefined,
 });
 
 export const SalesProvider = ({ children }: { children: ReactNode }) => {
@@ -158,9 +159,9 @@ export const SalesProvider = ({ children }: { children: ReactNode }) => {
         status: sale.status,
         lead_source: sale.leadSource,
         down_payment: sale.downPayment ?? null,
-        down_payment_method: sale.downPaymentMethod ?? null,
         notes: sale.notes,
-      })
+        hybrid_payments: sale.hybridPayments ? JSON.stringify(sale.hybridPayments) : null,
+      } as any)
       .select()
       .single();
 
@@ -188,8 +189,8 @@ export const SalesProvider = ({ children }: { children: ReactNode }) => {
     if (updates.status !== undefined) dbUpdates.status = updates.status;
     if (updates.leadSource !== undefined) dbUpdates.lead_source = updates.leadSource;
     if (updates.downPayment !== undefined) dbUpdates.down_payment = updates.downPayment ?? null;
-    if (updates.downPaymentMethod !== undefined) dbUpdates.down_payment_method = updates.downPaymentMethod ?? null;
     if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+    if (updates.hybridPayments !== undefined) dbUpdates.hybrid_payments = updates.hybridPayments ? JSON.stringify(updates.hybridPayments) : null;
 
     const { error } = await supabase
       .from("sales")

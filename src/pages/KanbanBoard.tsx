@@ -7,7 +7,7 @@ import { Columns3, GripVertical, Plus, CalendarIcon, Save, X, ArrowRight, Trash2
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import DateFilter from "@/components/dashboard/DateFilter";
-import { PAYMENT_METHODS, LEAD_SOURCES, calculateNetValue, getFeeDescription } from "@/data/mockData";
+import { PAYMENT_METHODS, LEAD_SOURCES, calculateNetValue, getFeeDescription, HybridPayment, calculateHybridNetValue, calculateHybridCaixa } from "@/data/mockData";
 import {
   Dialog,
   DialogContent,
@@ -75,6 +75,10 @@ const KanbanBoard = () => {
   const [moveGross, setMoveGross] = useState("");
   const [movePayment, setMovePayment] = useState("");
   const [moveDownPayment, setMoveDownPayment] = useState("");
+  const [moveHybridPayments, setMoveHybridPayments] = useState<HybridPayment[]>([
+    { method: "", value: 0 },
+    { method: "", value: 0 },
+  ]);
 
   // Follow Up dialog
   const [followUpDialog, setFollowUpDialog] = useState<{ saleId: string } | null>(null);
@@ -129,35 +133,58 @@ const KanbanBoard = () => {
     setDragOverColId(null);
   };
 
-  // Confirm move
+  const NON_HYBRID_METHODS = PAYMENT_METHODS.filter(m => m !== "Venda Híbrida");
+
   const handleMoveConfirm = () => {
     if (!moveDialog) return;
-    const gross = parseFloat(moveGross) || 0;
-    const net = movePayment ? calculateNetValue(gross, movePayment) : gross;
-    const dp = parseFloat(moveDownPayment) || undefined;
+    const isHybrid = movePayment === "Venda Híbrida";
 
-    const updates: Partial<Omit<Sale, "id">> = { status: moveDialog.targetStatus };
-    if (gross > 0) updates.grossValue = gross;
-    if (net > 0) updates.netValue = net;
-    if (movePayment) updates.paymentMethod = movePayment;
-    if (dp) updates.downPayment = dp;
+    if (isHybrid) {
+      const validPayments = moveHybridPayments.filter(p => p.method && p.value > 0);
+      if (validPayments.length < 2) {
+        toast.error("Venda Híbrida precisa de pelo menos 2 métodos.");
+        return;
+      }
+      const hybridTotal = validPayments.reduce((s, p) => s + p.value, 0);
+      const hybridNet = calculateHybridNetValue(validPayments);
+      updateSale(moveDialog.saleId, {
+        status: moveDialog.targetStatus,
+        grossValue: hybridTotal,
+        netValue: hybridNet,
+        paymentMethod: "Venda Híbrida",
+        hybridPayments: validPayments,
+      });
+    } else {
+      const gross = parseFloat(moveGross) || 0;
+      const net = movePayment ? calculateNetValue(gross, movePayment) : gross;
+      const dp = parseFloat(moveDownPayment) || undefined;
 
-    updateSale(moveDialog.saleId, updates);
+      const updates: Partial<Omit<Sale, "id">> = { status: moveDialog.targetStatus };
+      if (gross > 0) updates.grossValue = gross;
+      if (net > 0) updates.netValue = net;
+      if (movePayment) updates.paymentMethod = movePayment;
+      if (dp) updates.downPayment = dp;
+
+      updateSale(moveDialog.saleId, updates);
+    }
+
     toast.success(`Venda movida para ${moveDialog.targetStatus}`);
+    resetMoveDialog();
+  };
+
+  const resetMoveDialog = () => {
     setMoveDialog(null);
     setMoveGross("");
     setMovePayment("");
     setMoveDownPayment("");
+    setMoveHybridPayments([{ method: "", value: 0 }, { method: "", value: 0 }]);
   };
 
   const handleMoveSkip = () => {
     if (!moveDialog) return;
     updateSale(moveDialog.saleId, { status: moveDialog.targetStatus });
     toast.success(`Venda movida para ${moveDialog.targetStatus}`);
-    setMoveDialog(null);
-    setMoveGross("");
-    setMovePayment("");
-    setMoveDownPayment("");
+    resetMoveDialog();
   };
 
   // Follow Up confirm
@@ -480,8 +507,8 @@ const KanbanBoard = () => {
       </Dialog>
 
       {/* Move Dialog */}
-      <Dialog open={!!moveDialog} onOpenChange={(open) => { if (!open) { setMoveDialog(null); setMoveGross(""); setMovePayment(""); setMoveDownPayment(""); } }}>
-        <DialogContent className="max-w-sm">
+      <Dialog open={!!moveDialog} onOpenChange={(open) => { if (!open) resetMoveDialog(); }}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ArrowRight className="h-4 w-4 text-primary" />
@@ -493,10 +520,6 @@ const KanbanBoard = () => {
           </DialogHeader>
           <div className="space-y-4 mt-2">
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground">Valor Bruto (R$)</Label>
-              <Input type="number" placeholder="0,00" value={moveGross} onChange={(e) => setMoveGross(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-muted-foreground">Método de Pagamento</Label>
               <Select value={movePayment} onValueChange={setMovePayment}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
@@ -507,17 +530,68 @@ const KanbanBoard = () => {
                 </SelectContent>
               </Select>
             </div>
-            {movePayment === "TMB" && (
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-muted-foreground">Valor de Entrada</Label>
-                <Input type="number" placeholder="0,00" value={moveDownPayment} onChange={(e) => setMoveDownPayment(e.target.value)} />
+
+            {movePayment !== "Venda Híbrida" && (
+              <>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-muted-foreground">Valor Bruto (R$)</Label>
+                  <Input type="number" placeholder="0,00" value={moveGross} onChange={(e) => setMoveGross(e.target.value)} />
+                </div>
+                {movePayment === "TMB" && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-muted-foreground">Valor de Entrada</Label>
+                    <Input type="number" placeholder="0,00" value={moveDownPayment} onChange={(e) => setMoveDownPayment(e.target.value)} />
+                  </div>
+                )}
+                {moveGross && movePayment && (
+                  <div className="text-xs text-muted-foreground bg-secondary rounded-lg p-3">
+                    Valor líquido: <span className="font-semibold text-foreground">R$ {calculateNetValue(parseFloat(moveGross) || 0, movePayment).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+              </>
+            )}
+
+            {movePayment === "Venda Híbrida" && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold text-muted-foreground">Parcelas</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setMoveHybridPayments(prev => [...prev, { method: "", value: 0 }])}>
+                    <Plus className="h-3 w-3 mr-1" /> Adicionar
+                  </Button>
+                </div>
+                {moveHybridPayments.map((hp, idx) => (
+                  <div key={idx} className="flex items-end gap-2 p-2 bg-secondary/50 rounded-lg border border-border">
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Método</Label>
+                      <Select value={hp.method} onValueChange={(v) => setMoveHybridPayments(prev => prev.map((p, i) => i === idx ? { ...p, method: v } : p))}>
+                        <SelectTrigger className="h-8"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                        <SelectContent>{NON_HYBRID_METHODS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div className="w-24 space-y-1">
+                      <Label className="text-[10px] text-muted-foreground">Valor</Label>
+                      <Input type="number" placeholder="0" value={hp.value || ""} onChange={(e) => setMoveHybridPayments(prev => prev.map((p, i) => i === idx ? { ...p, value: parseFloat(e.target.value) || 0 } : p))} className="h-8" />
+                    </div>
+                    {hp.method === "TMB" && (
+                      <div className="w-24 space-y-1">
+                        <Label className="text-[10px] text-muted-foreground">Entrada</Label>
+                        <Input type="number" placeholder="0" value={hp.downPayment || ""} onChange={(e) => setMoveHybridPayments(prev => prev.map((p, i) => i === idx ? { ...p, downPayment: parseFloat(e.target.value) || 0 } : p))} className="h-8" />
+                      </div>
+                    )}
+                    {moveHybridPayments.length > 2 && (
+                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => setMoveHybridPayments(prev => prev.filter((_, i) => i !== idx))}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <div className="text-xs text-muted-foreground bg-secondary rounded-lg p-3 space-y-1">
+                  <div>Total: <span className="font-semibold text-foreground">R$ {moveHybridPayments.reduce((s, p) => s + (p.value || 0), 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span></div>
+                  <div>Líquido: <span className="font-semibold text-foreground">R$ {calculateHybridNetValue(moveHybridPayments.filter(p => p.method && p.value > 0)).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span></div>
+                </div>
               </div>
             )}
-            {moveGross && movePayment && (
-              <div className="text-xs text-muted-foreground bg-secondary rounded-lg p-3">
-                Valor líquido: <span className="font-semibold text-foreground">R$ {calculateNetValue(parseFloat(moveGross) || 0, movePayment).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-              </div>
-            )}
+
             <div className="flex gap-2 pt-1">
               <Button onClick={handleMoveConfirm} className="flex-1 font-semibold">
                 <Save className="h-4 w-4 mr-1" /> Confirmar
@@ -529,8 +603,6 @@ const KanbanBoard = () => {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Follow Up Dialog */}
       <Dialog open={!!followUpDialog} onOpenChange={(open) => { if (!open) setFollowUpDialog(null); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
