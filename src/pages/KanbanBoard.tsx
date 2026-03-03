@@ -56,7 +56,7 @@ const KanbanBoard = () => {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverColId, setDragOverColId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState(() => startOfDay(subDays(new Date(), 30)));
-  const [endDate, setEndDate] = useState(() => endOfDay(new Date()));
+  const [endDate, setEndDate] = useState(() => endOfDay(new Date(new Date().setDate(new Date().getDate() + 90))));
 
   // Add dialog
   const [addOpen, setAddOpen] = useState(false);
