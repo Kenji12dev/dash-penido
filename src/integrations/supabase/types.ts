@@ -151,6 +151,7 @@ export type Database = {
           down_payment: number | null
           down_payment_method: string | null
           gross_value: number
+          hybrid_payments: Json | null
           id: string
           lead_source: string | null
           net_value: number
@@ -169,6 +170,7 @@ export type Database = {
           down_payment?: number | null
           down_payment_method?: string | null
           gross_value?: number
+          hybrid_payments?: Json | null
           id?: string
           lead_source?: string | null
           net_value?: number
@@ -187,6 +189,7 @@ export type Database = {
           down_payment?: number | null
           down_payment_method?: string | null
           gross_value?: number
+          hybrid_payments?: Json | null
           id?: string
           lead_source?: string | null
           net_value?: number

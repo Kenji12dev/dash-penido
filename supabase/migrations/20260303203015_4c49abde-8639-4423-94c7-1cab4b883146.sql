@@ -1,0 +1,1 @@
+ALTER TABLE public.sales ADD COLUMN hybrid_payments jsonb DEFAULT NULL;

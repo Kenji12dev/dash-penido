@@ -214,7 +214,9 @@ const SalesDatabase = () => {
                           />
                         ) : s.paymentMethod === "TMB" && s.downPayment != null
                           ? `R$ ${s.downPayment.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
-                          : "—"}
+                          : s.paymentMethod === "Venda Híbrida" && s.hybridPayments
+                            ? <span className="text-[10px]" title={s.hybridPayments.map(p => `${p.method}: R$${p.value}`).join(", ")}>Híbrida</span>
+                            : "—"}
                       </td>
                       <td className="px-5 py-3.5 text-right text-foreground font-medium whitespace-nowrap">
                         {editingId === s.id
