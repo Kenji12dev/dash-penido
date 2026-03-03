@@ -170,7 +170,7 @@ const KanbanBoard = () => {
     // Create calendar event for follow-up
     if (sale) {
       try {
-        const { data } = await supabase.functions.invoke("google-calendar-event", {
+        const { data, error } = await supabase.functions.invoke("google-calendar-event", {
           body: {
             collaborator_name: sale.closer,
             client_name: sale.clientName,
@@ -181,8 +181,13 @@ const KanbanBoard = () => {
             notes: `Follow Up — ${sale.notes || ""}`.trim(),
           },
         });
+        console.log("Follow-up Calendar response:", { data, error });
         if (data?.success) {
           toast.success("📅 Follow Up agendado no Google Calendar!", { duration: 4000 });
+        } else if (data?.skipped) {
+          toast.warning(data?.error || "Google Calendar não vinculado para este closer", { duration: 5000 });
+        } else if (error || data?.error) {
+          toast.warning("Falha ao criar evento de Follow Up: " + (data?.error || error?.message), { duration: 5000 });
         }
       } catch (err) {
         console.warn("Calendar integration error:", err);
@@ -254,12 +259,13 @@ const KanbanBoard = () => {
           notes: newNotes.trim(),
         },
       });
+      console.log("Calendar response:", { data, error });
       if (data?.success) {
         toast.success("📅 Evento criado no Google Calendar!", { duration: 4000 });
       } else if (data?.skipped) {
-        // Calendar not linked
+        toast.warning(data?.error || "Google Calendar não vinculado para este closer", { duration: 5000 });
       } else if (error || data?.error) {
-        console.warn("Calendar event error:", data?.error || error?.message);
+        toast.warning("Falha ao criar evento no Calendar: " + (data?.error || error?.message), { duration: 5000 });
       }
     } catch (err) {
       console.warn("Calendar integration error:", err);
