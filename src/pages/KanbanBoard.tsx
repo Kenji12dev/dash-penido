@@ -227,7 +227,7 @@ const KanbanBoard = () => {
       toast.error("Preencha todos os campos obrigatórios.");
       return;
     }
-    addSale({
+    await addSale({
       date: newDate,
       clientName: newClient.trim(),
       product: newProduct,
