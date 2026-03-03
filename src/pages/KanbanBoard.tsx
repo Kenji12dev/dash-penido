@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { format, startOfDay, endOfDay, startOfMonth, addMonths } from "date-fns";
+import { format, startOfDay, endOfDay, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useSales, Sale } from "@/context/SalesContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -55,8 +55,8 @@ const KanbanBoard = () => {
   const { sales, addSale, updateSale, deleteSale, products, closers, sdrs } = useSales();
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverColId, setDragOverColId] = useState<string | null>(null);
-  const [startDate, setStartDate] = useState(() => startOfDay(startOfMonth(new Date())));
-  const [endDate, setEndDate] = useState(() => endOfDay(addMonths(new Date(), 3)));
+  const [startDate, setStartDate] = useState(() => startOfDay(new Date()));
+  const [endDate, setEndDate] = useState(() => endOfDay(endOfMonth(new Date())));
 
   // Add dialog
   const [addOpen, setAddOpen] = useState(false);
