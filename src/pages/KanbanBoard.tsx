@@ -86,9 +86,15 @@ const KanbanBoard = () => {
   const [followUpStartTime, setFollowUpStartTime] = useState("10:00");
   const [followUpEndTime, setFollowUpEndTime] = useState("11:00");
 
-  // Detail dialog
+  // Detail dialog (editable)
   const [detailSale, setDetailSale] = useState<Sale | null>(null);
   const [editNotes, setEditNotes] = useState("");
+  const [editClient, setEditClient] = useState("");
+  const [editProduct, setEditProduct] = useState("");
+  const [editCloser, setEditCloser] = useState("");
+  const [editSdr, setEditSdr] = useState("");
+  const [editLeadSource, setEditLeadSource] = useState("");
+  const [editDate, setEditDate] = useState<Date>(new Date());
 
   // Delete dialog
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -308,11 +314,25 @@ const KanbanBoard = () => {
   const openDetail = (sale: Sale) => {
     setDetailSale(sale);
     setEditNotes(sale.notes || "");
+    setEditClient(sale.clientName);
+    setEditProduct(sale.product);
+    setEditCloser(sale.closer);
+    setEditSdr(sale.sdr);
+    setEditLeadSource(sale.leadSource);
+    setEditDate(new Date(sale.date));
   };
 
   const saveDetail = () => {
     if (!detailSale) return;
-    updateSale(detailSale.id, { notes: editNotes.trim() });
+    updateSale(detailSale.id, {
+      notes: editNotes.trim(),
+      clientName: editClient.trim(),
+      product: editProduct,
+      closer: editCloser,
+      sdr: editSdr,
+      leadSource: editLeadSource,
+      date: editDate,
+    });
     toast.success("Informações atualizadas!");
     setDetailSale(null);
   };
@@ -652,47 +672,85 @@ const KanbanBoard = () => {
           {detailSale && (
             <>
               <DialogHeader>
-                <DialogTitle>{detailSale.clientName}</DialogTitle>
-                <DialogDescription>{detailSale.product} — {format(new Date(detailSale.date), "dd/MM/yyyy", { locale: ptBR })}</DialogDescription>
+                <DialogTitle>Editar Agendamento</DialogTitle>
+                <DialogDescription>Altere as informações do agendamento.</DialogDescription>
               </DialogHeader>
               <div className="space-y-4 mt-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-muted-foreground">Data</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start text-left font-normal">
+                        <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+                        {format(editDate, "dd MMM yyyy", { locale: ptBR })}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar mode="single" selected={editDate} onSelect={(d) => d && setEditDate(d)} className="p-3 pointer-events-auto" />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-muted-foreground">Cliente</Label>
+                  <Input value={editClient} onChange={(e) => setEditClient(e.target.value)} />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-muted-foreground">Produto</Label>
+                    <Select value={editProduct} onValueChange={setEditProduct}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{products.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-muted-foreground">Origem</Label>
+                    <Select value={editLeadSource} onValueChange={setEditLeadSource}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{LEAD_SOURCES.map((ls) => <SelectItem key={ls} value={ls}>{ls}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-muted-foreground">Closer</Label>
+                    <Select value={editCloser} onValueChange={setEditCloser}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{closers.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-muted-foreground">SDR</Label>
+                    <Select value={editSdr} onValueChange={setEditSdr}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{sdrs.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
                     <span className="text-muted-foreground text-xs">Status</span>
                     <p className="font-semibold text-foreground">{detailSale.status}</p>
                   </div>
-                  <div>
-                    <span className="text-muted-foreground text-xs">Valor Bruto</span>
-                    <p className="font-semibold text-foreground">
-                      {detailSale.grossValue > 0 ? `R$ ${detailSale.grossValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground text-xs">Pagamento</span>
-                    <p className="font-medium text-foreground">{detailSale.paymentMethod || "—"}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground text-xs">Valor Líquido</span>
-                    <p className="font-medium text-foreground">
-                      {detailSale.netValue > 0 ? `R$ ${detailSale.netValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground text-xs">Closer</span>
-                    <p className="font-medium text-foreground">{detailSale.closer}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground text-xs">SDR</span>
-                    <p className="font-medium text-foreground">{detailSale.sdr}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground text-xs">Origem</span>
-                    <p className="font-medium text-foreground">{detailSale.leadSource}</p>
-                  </div>
-                  {detailSale.downPayment != null && detailSale.downPayment > 0 && (
+                  {detailSale.grossValue > 0 && (
                     <div>
-                      <span className="text-muted-foreground text-xs">Entrada</span>
-                      <p className="font-medium text-foreground">R$ {detailSale.downPayment.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                      <span className="text-muted-foreground text-xs">Valor Bruto</span>
+                      <p className="font-semibold text-foreground">R$ {detailSale.grossValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                    </div>
+                  )}
+                  {detailSale.paymentMethod && (
+                    <div>
+                      <span className="text-muted-foreground text-xs">Pagamento</span>
+                      <p className="font-medium text-foreground">{detailSale.paymentMethod}</p>
+                    </div>
+                  )}
+                  {detailSale.netValue > 0 && (
+                    <div>
+                      <span className="text-muted-foreground text-xs">Valor Líquido</span>
+                      <p className="font-medium text-foreground">R$ {detailSale.netValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
                     </div>
                   )}
                 </div>
@@ -705,7 +763,7 @@ const KanbanBoard = () => {
                     placeholder="Adicione informações do cliente, briefing da call, observações..."
                     value={editNotes}
                     onChange={(e) => setEditNotes(e.target.value)}
-                    rows={5}
+                    rows={4}
                     className="resize-none"
                   />
                 </div>
