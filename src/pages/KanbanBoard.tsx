@@ -334,6 +334,11 @@ const KanbanBoard = () => {
 
   const saveDetail = () => {
     if (!detailSale) return;
+    // Combine date with start time
+    const [h, m] = editStartTime.split(":").map(Number);
+    const combinedDate = new Date(editDate);
+    combinedDate.setHours(h, m, 0, 0);
+
     updateSale(detailSale.id, {
       notes: editNotes.trim(),
       clientName: editClient.trim(),
@@ -341,7 +346,7 @@ const KanbanBoard = () => {
       closer: editCloser,
       sdr: editSdr,
       leadSource: editLeadSource,
-      date: editDate,
+      date: combinedDate,
     });
     toast.success("Informações atualizadas!");
     setDetailSale(null);
