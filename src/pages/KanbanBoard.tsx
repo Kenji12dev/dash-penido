@@ -95,6 +95,8 @@ const KanbanBoard = () => {
   const [editSdr, setEditSdr] = useState("");
   const [editLeadSource, setEditLeadSource] = useState("");
   const [editDate, setEditDate] = useState<Date>(new Date());
+  const [editStartTime, setEditStartTime] = useState("10:00");
+  const [editEndTime, setEditEndTime] = useState("11:00");
 
   // Delete dialog
   const [deleteId, setDeleteId] = useState<string | null>(null);
