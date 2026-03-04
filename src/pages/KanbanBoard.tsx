@@ -705,6 +705,16 @@ const KanbanBoard = () => {
                     </PopoverContent>
                   </Popover>
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-muted-foreground">Início</Label>
+                    <Input type="time" value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-muted-foreground">Fim</Label>
+                    <Input type="time" value={editEndTime} onChange={(e) => setEditEndTime(e.target.value)} />
+                  </div>
+                </div>
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-muted-foreground">Cliente</Label>
