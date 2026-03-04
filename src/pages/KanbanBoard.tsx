@@ -95,6 +95,8 @@ const KanbanBoard = () => {
   const [editSdr, setEditSdr] = useState("");
   const [editLeadSource, setEditLeadSource] = useState("");
   const [editDate, setEditDate] = useState<Date>(new Date());
+  const [editStartTime, setEditStartTime] = useState("10:00");
+  const [editEndTime, setEditEndTime] = useState("11:00");
 
   // Delete dialog
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -320,10 +322,23 @@ const KanbanBoard = () => {
     setEditSdr(sale.sdr);
     setEditLeadSource(sale.leadSource);
     setEditDate(new Date(sale.date));
+    // Extract time from the date
+    const d = new Date(sale.date);
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    setEditStartTime(`${hh}:${mm}`);
+    // Default end time to 1 hour after start
+    const end = new Date(d.getTime() + 60 * 60 * 1000);
+    setEditEndTime(`${String(end.getHours()).padStart(2, "0")}:${String(end.getMinutes()).padStart(2, "0")}`);
   };
 
   const saveDetail = () => {
     if (!detailSale) return;
+    // Combine date with start time
+    const [h, m] = editStartTime.split(":").map(Number);
+    const combinedDate = new Date(editDate);
+    combinedDate.setHours(h, m, 0, 0);
+
     updateSale(detailSale.id, {
       notes: editNotes.trim(),
       clientName: editClient.trim(),
@@ -331,7 +346,7 @@ const KanbanBoard = () => {
       closer: editCloser,
       sdr: editSdr,
       leadSource: editLeadSource,
-      date: editDate,
+      date: combinedDate,
     });
     toast.success("Informações atualizadas!");
     setDetailSale(null);
@@ -689,6 +704,16 @@ const KanbanBoard = () => {
                       <Calendar mode="single" selected={editDate} onSelect={(d) => d && setEditDate(d)} className="p-3 pointer-events-auto" />
                     </PopoverContent>
                   </Popover>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-muted-foreground">Início</Label>
+                    <Input type="time" value={editStartTime} onChange={(e) => setEditStartTime(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-muted-foreground">Fim</Label>
+                    <Input type="time" value={editEndTime} onChange={(e) => setEditEndTime(e.target.value)} />
+                  </div>
                 </div>
 
                 <div className="space-y-1.5">
