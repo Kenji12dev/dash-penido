@@ -19,7 +19,6 @@ const AppNav = ({ activeTab, onTabChange }: AppNavProps) => {
     { id: "add-sale", label: "Adicionar Venda", icon: PlusCircle },
     { id: "database", label: "Banco de Dados", icon: Database },
     { id: "kanban", label: "Fluxo de Status", icon: Columns3 },
-    { id: "individual-goals", label: "Metas Individuais", icon: Target },
     ...(role === "admin"
       ? [{ id: "collaborators", label: "Colaboradores", icon: Users }]
       : []),
