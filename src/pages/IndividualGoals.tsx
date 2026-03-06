@@ -219,87 +219,145 @@ const IndividualGoals = () => {
     "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
   ];
 
-  const renderCollaboratorCard = (collab: Collaborator, isSdr: boolean) => {
-    const goalKey = `${collab.id}_monthly_m`;
-    const goalVal = goals.find(
-      (g) => g.collaborator_id === collab.id && g.period_type === "monthly" && g.week_number === null
-    )?.goal_value || 0;
-    const actual = actuals[collab.id]?.monthly || 0;
-    const pct = goalVal > 0 ? Math.min((actual / goalVal) * 100, 100) : 0;
+  const buildChartData = (collabList: Collaborator[], isSdr: boolean) => {
+    return collabList.map((c) => {
+      const goalVal = goals.find(
+        (g) => g.collaborator_id === c.id && g.period_type === "monthly" && g.week_number === null
+      )?.goal_value || 0;
+      const actual = actuals[c.id]?.monthly || 0;
+      return { name: c.name, Meta: goalVal, Realizado: actual };
+    });
+  };
+
+  const buildWeeklyChartData = (collab: Collaborator, isSdr: boolean) => {
+    return weeks.map((w) => {
+      const wGoal = goals.find(
+        (g) => g.collaborator_id === collab.id && g.period_type === "weekly" && g.week_number === w.number
+      )?.goal_value || 0;
+      const wActual = actuals[collab.id]?.weeks[w.number] || 0;
+      return { name: `S${w.number}`, Meta: wGoal, Realizado: wActual };
+    });
+  };
+
+  const CustomTooltip = ({ active, payload, label, isSdr }: any) => {
+    if (!active || !payload?.length) return null;
+    return (
+      <div className="bg-card border border-border rounded-lg p-3 shadow-lg">
+        <p className="text-sm font-semibold text-foreground mb-1">{label}</p>
+        {payload.map((p: any) => (
+          <p key={p.name} className="text-xs" style={{ color: p.color }}>
+            {p.name}: {isSdr ? p.value : formatCurrency(p.value)}
+          </p>
+        ))}
+      </div>
+    );
+  };
+
+  const renderGroupedBarChart = (collabList: Collaborator[], isSdr: boolean, title: string) => {
+    const data = buildChartData(collabList, isSdr);
+    const hasData = data.some((d) => d.Meta > 0 || d.Realizado > 0);
 
     return (
-      <Card key={collab.id} className="glass-card gradient-border">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            {isSdr ? <CalendarDays className="h-4 w-4 text-primary" /> : <TrendingUp className="h-4 w-4 text-primary" />}
-            {collab.name}
+      <Card className="glass-card gradient-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold tracking-[0.1em] uppercase text-muted-foreground flex items-center gap-2">
+            {isSdr ? <Users className="h-4 w-4" /> : <TrendingUp className="h-4 w-4" />}
+            {title}
           </CardTitle>
-          <p className="text-xs text-muted-foreground">
-            {isSdr ? "Meta por Agendamentos" : "Meta por Faturamento"}
-          </p>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {editing && isAdmin ? (
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                Meta {isSdr ? "(agendamentos)" : "(R$)"}
-              </Label>
-              <Input
-                type="number"
-                value={editValues[goalKey] || ""}
-                onChange={(e) =>
-                  setEditValues((prev) => ({ ...prev, [goalKey]: e.target.value }))
-                }
-                placeholder="0"
-              />
-            </div>
-          ) : goalVal > 0 ? (
-            <>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Realizado</span>
-                <span className="font-semibold">
-                  {isSdr ? `${actual} / ${goalVal}` : `${formatCurrency(actual)} / ${formatCurrency(goalVal)}`}
-                </span>
-              </div>
-              <Progress value={pct} className="h-3" />
-              <p className="text-xs text-muted-foreground text-right">{pct.toFixed(1)}%</p>
-            </>
+        <CardContent>
+          {hasData ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={data} barGap={4} barCategoryGap="20%">
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="name" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
+                <YAxis
+                  tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+                  tickFormatter={isSdr ? undefined : (v) => `R$${(v / 1000).toFixed(0)}k`}
+                />
+                <Tooltip content={<CustomTooltip isSdr={isSdr} />} />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Bar dataKey="Meta" fill={CHART_COLORS[5]} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Realizado" fill={CHART_COLORS[3]} radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           ) : (
-            <p className="text-sm text-muted-foreground">Sem meta definida</p>
-          )}
-
-          {/* Weekly breakdown */}
-          {periodType === "weekly" && !editing && (
-            <div className="space-y-2 mt-3 pt-3 border-t border-border">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Semanas</p>
-              {weeks.map((w) => {
-                const wGoal = goals.find(
-                  (g) =>
-                    g.collaborator_id === collab.id &&
-                    g.period_type === "weekly" &&
-                    g.week_number === w.number
-                )?.goal_value || 0;
-                const wActual = actuals[collab.id]?.weeks[w.number] || 0;
-                const wPct = wGoal > 0 ? Math.min((wActual / wGoal) * 100, 100) : 0;
-                if (wGoal === 0) return null;
-                return (
-                  <div key={w.number} className="space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Semana {w.number}</span>
-                      <span className="font-medium">
-                        {isSdr ? `${wActual}/${wGoal}` : `${formatCurrency(wActual)}/${formatCurrency(wGoal)}`}
-                      </span>
-                    </div>
-                    <Progress value={wPct} className="h-2" />
-                  </div>
-                );
-              })}
-            </div>
+            <p className="text-sm text-muted-foreground text-center py-8">Nenhuma meta definida</p>
           )}
         </CardContent>
       </Card>
     );
   };
+
+  const renderWeeklyCharts = (collabList: Collaborator[], isSdr: boolean) => {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {collabList.map((c) => {
+          const data = buildWeeklyChartData(c, isSdr);
+          const hasData = data.some((d) => d.Meta > 0 || d.Realizado > 0);
+          if (!hasData) return null;
+          return (
+            <Card key={c.id} className="glass-card gradient-border">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  {isSdr ? <CalendarDays className="h-4 w-4 text-primary" /> : <TrendingUp className="h-4 w-4 text-primary" />}
+                  {c.name}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={data} barGap={4} barCategoryGap="20%">
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                      tickFormatter={isSdr ? undefined : (v) => `R$${(v / 1000).toFixed(0)}k`}
+                    />
+                    <Tooltip content={<CustomTooltip isSdr={isSdr} />} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Bar dataKey="Meta" fill={CHART_COLORS[5]} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="Realizado" fill={CHART_COLORS[3]} radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderEditCards = (collabList: Collaborator[], isSdr: boolean) => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {collabList.map((collab) => {
+        const goalKey = `${collab.id}_monthly_m`;
+        return (
+          <Card key={collab.id} className="glass-card gradient-border">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                {isSdr ? <CalendarDays className="h-4 w-4 text-primary" /> : <TrendingUp className="h-4 w-4 text-primary" />}
+                {collab.name}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">
+                  Meta {isSdr ? "(agendamentos)" : "(R$)"}
+                </Label>
+                <Input
+                  type="number"
+                  value={editValues[goalKey] || ""}
+                  onChange={(e) =>
+                    setEditValues((prev) => ({ ...prev, [goalKey]: e.target.value }))
+                  }
+                  placeholder="0"
+                />
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
+  );
 
   const renderWeeklyEditTable = (collabList: Collaborator[], isSdr: boolean) => (
     <Table>
