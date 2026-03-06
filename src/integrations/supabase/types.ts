@@ -85,6 +85,50 @@ export type Database = {
           },
         ]
       }
+      individual_goals: {
+        Row: {
+          collaborator_id: string
+          created_at: string
+          goal_value: number
+          id: string
+          month: number
+          period_type: string
+          updated_at: string
+          week_number: number | null
+          year: number
+        }
+        Insert: {
+          collaborator_id: string
+          created_at?: string
+          goal_value?: number
+          id?: string
+          month: number
+          period_type?: string
+          updated_at?: string
+          week_number?: number | null
+          year: number
+        }
+        Update: {
+          collaborator_id?: string
+          created_at?: string
+          goal_value?: number
+          id?: string
+          month?: number
+          period_type?: string
+          updated_at?: string
+          week_number?: number | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "individual_goals_collaborator_id_fkey"
+            columns: ["collaborator_id"]
+            isOneToOne: false
+            referencedRelation: "collaborators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       monthly_goals: {
         Row: {
           cash_goal: number
