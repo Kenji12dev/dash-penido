@@ -6,6 +6,7 @@ import AddSale from "@/pages/AddSale";
 import SalesDatabase from "@/pages/SalesDatabase";
 import KanbanBoard from "@/pages/KanbanBoard";
 import Collaborators from "@/pages/Collaborators";
+import PreSales from "@/pages/PreSales";
 import Profile from "@/pages/Profile";
 
 const Index = () => {
