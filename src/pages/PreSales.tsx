@@ -392,6 +392,90 @@ const PreSales = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* SDR Performance Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            Performance dos SDRs — {months[selectedMonth].label.charAt(0).toUpperCase() + months[selectedMonth].label.slice(1)}/{selectedYear}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>SDR</TableHead>
+                <TableHead className="text-center">Conversas</TableHead>
+                <TableHead className="text-center">Respostas</TableHead>
+                <TableHead className="text-center">Calls Marcadas</TableHead>
+                <TableHead className="text-center">Taxa Resposta</TableHead>
+                <TableHead className="text-center">Taxa Agendamento</TableHead>
+                <TableHead className="text-center">Agend. Total</TableHead>
+                <TableHead className="text-center">Pagos</TableHead>
+                <TableHead className="text-center">Pendentes</TableHead>
+                <TableHead className="text-center">Follow Up</TableHead>
+                <TableHead className="text-center">Loss</TableHead>
+                <TableHead className="text-center">Taxa Conversão</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {collaborators.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={12} className="text-center text-muted-foreground py-10">
+                    Nenhum SDR cadastrado.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                collaborators.map((collab) => {
+                  const metrics = metricsChartData.find((m) => m.name === collab.name);
+                  const appointments = appointmentChartData.find((a) => a.name === collab.name);
+                  const conversations = metrics?.["Conversas Iniciadas"] || 0;
+                  const replies = metrics?.["Respostas"] || 0;
+                  const calls = metrics?.["Calls Marcadas"] || 0;
+                  const total = appointments?.Total || 0;
+                  const pago = appointments?.Pago || 0;
+                  const pendente = appointments?.Pendente || 0;
+                  const followUp = appointments?.["Follow Up"] || 0;
+                  const loss = appointments?.Loss || 0;
+                  const replyRate = conversations > 0 ? ((replies / conversations) * 100).toFixed(1) : "—";
+                  const scheduleRate = replies > 0 ? ((calls / replies) * 100).toFixed(1) : "—";
+                  const conversionRate = total > 0 ? ((pago / total) * 100).toFixed(1) : "—";
+
+                  return (
+                    <TableRow key={collab.id}>
+                      <TableCell className="font-medium">{collab.name}</TableCell>
+                      <TableCell className="text-center">{conversations}</TableCell>
+                      <TableCell className="text-center">{replies}</TableCell>
+                      <TableCell className="text-center">{calls}</TableCell>
+                      <TableCell className="text-center">
+                        <span className={replyRate !== "—" ? "text-primary font-medium" : "text-muted-foreground"}>
+                          {replyRate !== "—" ? `${replyRate}%` : "—"}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className={scheduleRate !== "—" ? "text-primary font-medium" : "text-muted-foreground"}>
+                          {scheduleRate !== "—" ? `${scheduleRate}%` : "—"}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center font-medium">{total}</TableCell>
+                      <TableCell className="text-center text-emerald-500 font-medium">{pago}</TableCell>
+                      <TableCell className="text-center text-yellow-500 font-medium">{pendente}</TableCell>
+                      <TableCell className="text-center text-blue-500 font-medium">{followUp}</TableCell>
+                      <TableCell className="text-center text-destructive font-medium">{loss}</TableCell>
+                      <TableCell className="text-center">
+                        <span className={conversionRate !== "—" ? "text-primary font-semibold" : "text-muted-foreground"}>
+                          {conversionRate !== "—" ? `${conversionRate}%` : "—"}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 };
