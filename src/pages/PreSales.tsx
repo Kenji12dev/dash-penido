@@ -352,33 +352,100 @@ const PreSales = () => {
         </Card>
       )}
 
-      {/* SDR Performance Table */}
-      <Card>
-        <CardHeader className="flex flex-col gap-3">
-          <div className="flex flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <TrendingUp className="h-5 w-5 text-primary" />
-              Performance dos SDRs — {filterLabel}
-            </CardTitle>
-            {role === "admin" && (
-              <Button variant="outline" size="sm" onClick={openGoalsDialog} className="gap-1.5">
-                <Target className="h-4 w-4" />
-                Definir Metas
-              </Button>
+      {/* Weekly SDR Goals Card - like Dashboard MonthlyGoals */}
+      {(() => {
+        const month = filterStart.getMonth() + 1;
+        const year = filterStart.getFullYear();
+        const weekLabel = availableWeeks.find(w => w.weekNum === selectedWeek)?.label || `Sem ${selectedWeek}`;
+        const hasAnyGoal = collaborators.some((c) => {
+          const goal = sdrGoals.find((g) => g.collaborator_id === c.id && g.month === month && g.year === year && g.week_number === selectedWeek);
+          return goal && (goal.conversations_goal > 0 || goal.replies_goal > 0 || goal.calls_goal > 0);
+        });
+
+        if (!hasAnyGoal && role !== "admin") return null;
+
+        return (
+          <div className="glass-card gradient-border p-6 opacity-0 animate-fade-in" style={{ animationDelay: "100ms" }}>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Target className="h-4 w-4 text-primary" />
+                <h2 className="text-sm font-semibold tracking-[0.1em] uppercase text-muted-foreground">
+                  Metas Semanais dos SDRs
+                </h2>
+              </div>
+              <div className="flex items-center gap-3">
+                <select
+                  className="border border-border rounded-md px-3 py-1.5 text-sm bg-background text-foreground"
+                  value={selectedWeek}
+                  onChange={(e) => setSelectedWeek(Number(e.target.value))}
+                >
+                  {availableWeeks.map((w) => (
+                    <option key={w.weekNum} value={w.weekNum}>{w.label}</option>
+                  ))}
+                </select>
+                {role === "admin" && (
+                  <Button variant="ghost" size="sm" onClick={openGoalsDialog} className="text-xs">
+                    Editar Metas
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {hasAnyGoal ? (
+              <div className="space-y-6 mt-4">
+                {collaborators.map((collab) => {
+                  const goal = sdrGoals.find((g) => g.collaborator_id === collab.id && g.month === month && g.year === year && g.week_number === selectedWeek);
+                  if (!goal || (goal.conversations_goal === 0 && goal.replies_goal === 0 && goal.calls_goal === 0)) return null;
+
+                  const metrics = metricsChartData.find((m) => m.name === collab.name);
+                  const conversations = metrics?.["Conversas Iniciadas"] || 0;
+                  const replies = metrics?.["Respostas"] || 0;
+                  const calls = metrics?.["Calls Marcadas"] || 0;
+
+                  const items = [
+                    { label: "Conversas", actual: conversations, target: goal.conversations_goal },
+                    { label: "Respostas", actual: replies, target: goal.replies_goal },
+                    { label: "Calls Marcadas", actual: calls, target: goal.calls_goal },
+                  ].filter((i) => i.target > 0);
+
+                  return (
+                    <div key={collab.id}>
+                      <p className="text-sm font-semibold text-foreground mb-3">{collab.name}</p>
+                      <div className="space-y-3">
+                        {items.map((item) => {
+                          const pct = Math.min((item.actual / item.target) * 100, 100);
+                          return (
+                            <div key={item.label} className="space-y-1.5">
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">{item.label}</span>
+                                <span className="font-semibold text-foreground">
+                                  {item.actual} / {item.target}
+                                </span>
+                              </div>
+                              <Progress value={pct} className="h-3" />
+                              <p className="text-xs text-muted-foreground text-right">{pct.toFixed(1)}%</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground mt-2">Nenhuma meta definida para esta semana. Clique em "Editar Metas" para configurar.</p>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <Label className="text-sm text-muted-foreground">Semana:</Label>
-            <select
-              className="border border-border rounded-md px-3 py-1.5 text-sm bg-background text-foreground"
-              value={selectedWeek}
-              onChange={(e) => setSelectedWeek(Number(e.target.value))}
-            >
-              {availableWeeks.map((w) => (
-                <option key={w.weekNum} value={w.weekNum}>{w.label}</option>
-              ))}
-            </select>
-          </div>
+        );
+      })()}
+
+      {/* SDR Performance Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            Performance dos SDRs — {filterLabel}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
