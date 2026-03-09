@@ -516,43 +516,17 @@ const PreSales = () => {
             {collaborators.map((collab) => (
               <div key={collab.id} className="border border-border rounded-lg p-4 space-y-3">
                 <p className="font-medium text-foreground">{collab.name}</p>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Conversas</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={editingGoals[collab.id]?.conversations ?? 0}
-                      onChange={(e) => setEditingGoals((prev) => ({
-                        ...prev,
-                        [collab.id]: { ...prev[collab.id], conversations: Number(e.target.value) },
-                      }))}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Respostas</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={editingGoals[collab.id]?.replies ?? 0}
-                      onChange={(e) => setEditingGoals((prev) => ({
-                        ...prev,
-                        [collab.id]: { ...prev[collab.id], replies: Number(e.target.value) },
-                      }))}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Calls</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={editingGoals[collab.id]?.calls ?? 0}
-                      onChange={(e) => setEditingGoals((prev) => ({
-                        ...prev,
-                        [collab.id]: { ...prev[collab.id], calls: Number(e.target.value) },
-                      }))}
-                    />
-                  </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Calls Marcadas</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={editingGoals[collab.id]?.calls ?? 0}
+                    onChange={(e) => setEditingGoals((prev) => ({
+                      ...prev,
+                      [collab.id]: { calls: Number(e.target.value) },
+                    }))}
+                  />
                 </div>
               </div>
             ))}
