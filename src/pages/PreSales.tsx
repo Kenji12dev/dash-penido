@@ -423,7 +423,7 @@ const PreSales = () => {
 
                   const month = filterStart.getMonth() + 1;
                   const year = filterStart.getFullYear();
-                  const goal = sdrGoals.find((g) => g.collaborator_id === collab.id && g.month === month && g.year === year);
+                  const goal = sdrGoals.find((g) => g.collaborator_id === collab.id && g.month === month && g.year === year && g.week_number === selectedWeek);
 
                   const renderWithGoal = (actual: number, goalVal: number | undefined) => {
                     if (!goalVal || goalVal === 0) return <span>{actual}</span>;
