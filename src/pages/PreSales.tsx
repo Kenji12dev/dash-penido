@@ -354,17 +354,31 @@ const PreSales = () => {
 
       {/* SDR Performance Table */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <TrendingUp className="h-5 w-5 text-primary" />
-            Performance dos SDRs — {filterLabel}
-          </CardTitle>
-          {role === "admin" && (
-            <Button variant="outline" size="sm" onClick={openGoalsDialog} className="gap-1.5">
-              <Target className="h-4 w-4" />
-              Definir Metas
-            </Button>
-          )}
+        <CardHeader className="flex flex-col gap-3">
+          <div className="flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              Performance dos SDRs — {filterLabel}
+            </CardTitle>
+            {role === "admin" && (
+              <Button variant="outline" size="sm" onClick={openGoalsDialog} className="gap-1.5">
+                <Target className="h-4 w-4" />
+                Definir Metas
+              </Button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Label className="text-sm text-muted-foreground">Semana:</Label>
+            <select
+              className="border border-border rounded-md px-3 py-1.5 text-sm bg-background text-foreground"
+              value={selectedWeek}
+              onChange={(e) => setSelectedWeek(Number(e.target.value))}
+            >
+              {availableWeeks.map((w) => (
+                <option key={w.weekNum} value={w.weekNum}>{w.label}</option>
+              ))}
+            </select>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
