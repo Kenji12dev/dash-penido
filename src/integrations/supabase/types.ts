@@ -300,6 +300,7 @@ export type Database = {
           month: number
           replies_goal: number
           updated_at: string
+          week_number: number
           year: number
         }
         Insert: {
@@ -311,6 +312,7 @@ export type Database = {
           month: number
           replies_goal?: number
           updated_at?: string
+          week_number?: number
           year: number
         }
         Update: {
@@ -322,6 +324,7 @@ export type Database = {
           month?: number
           replies_goal?: number
           updated_at?: string
+          week_number?: number
           year?: number
         }
         Relationships: [

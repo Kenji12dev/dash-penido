@@ -11,7 +11,8 @@ import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import DateFilter from "@/components/dashboard/DateFilter";
 import { toast } from "sonner";
-import { format, startOfMonth, endOfDay, parseISO, isWithinInterval, startOfDay } from "date-fns";
+import { format, startOfMonth, endOfDay, parseISO, isWithinInterval, startOfDay, getISOWeek, startOfWeek, endOfWeek, addWeeks, getWeeksInMonth, startOfISOWeek } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from "recharts";
 import { MessageSquare, Reply, Phone, Save, CalendarDays, TrendingUp, Pencil, Target } from "lucide-react";
 
@@ -30,6 +31,7 @@ interface SdrGoal {
   collaborator_id: string;
   month: number;
   year: number;
+  week_number: number;
   conversations_goal: number;
   replies_goal: number;
   calls_goal: number;
@@ -59,6 +61,7 @@ const PreSales = () => {
   const [goalsDialogOpen, setGoalsDialogOpen] = useState(false);
   const [editingGoals, setEditingGoals] = useState<Record<string, { conversations: number; replies: number; calls: number }>>({});
   const [savingGoals, setSavingGoals] = useState(false);
+  const [selectedWeek, setSelectedWeek] = useState(getISOWeek(new Date()));
 
   // Fetch SDR collaborators
   useEffect(() => {
@@ -92,7 +95,34 @@ const PreSales = () => {
     fetchMetrics();
   }, [filterStart, filterEnd]);
 
-  // Fetch SDR goals for current month
+  // Compute available weeks for the filtered month
+  const availableWeeks = useMemo(() => {
+    const month = filterStart.getMonth();
+    const year = filterStart.getFullYear();
+    const weeks: { weekNum: number; label: string }[] = [];
+    let d = startOfMonth(new Date(year, month));
+    const seen = new Set<number>();
+    while (d.getMonth() === month) {
+      const wn = getISOWeek(d);
+      if (!seen.has(wn)) {
+        seen.add(wn);
+        const ws = startOfWeek(d, { weekStartsOn: 1 });
+        const we = endOfWeek(d, { weekStartsOn: 1 });
+        weeks.push({ weekNum: wn, label: `Sem ${wn} (${format(ws, "dd/MM")} - ${format(we, "dd/MM")})` });
+      }
+      d = addWeeks(startOfWeek(d, { weekStartsOn: 1 }), 1);
+    }
+    return weeks;
+  }, [filterStart]);
+
+  // Reset selected week when month changes
+  useEffect(() => {
+    if (availableWeeks.length > 0 && !availableWeeks.find(w => w.weekNum === selectedWeek)) {
+      setSelectedWeek(availableWeeks[0].weekNum);
+    }
+  }, [availableWeeks]);
+
+  // Fetch SDR goals for current month (all weeks)
   useEffect(() => {
     const fetchGoals = async () => {
       const month = filterStart.getMonth() + 1;
@@ -184,7 +214,7 @@ const PreSales = () => {
     const year = filterStart.getFullYear();
     const initial: Record<string, { conversations: number; replies: number; calls: number }> = {};
     collaborators.forEach((c) => {
-      const goal = sdrGoals.find((g) => g.collaborator_id === c.id && g.month === month && g.year === year);
+      const goal = sdrGoals.find((g) => g.collaborator_id === c.id && g.month === month && g.year === year && g.week_number === selectedWeek);
       initial[c.id] = {
         conversations: goal?.conversations_goal || 0,
         replies: goal?.replies_goal || 0,
@@ -203,7 +233,7 @@ const PreSales = () => {
     for (const collab of collaborators) {
       const vals = editingGoals[collab.id];
       if (!vals) continue;
-      const existing = sdrGoals.find((g) => g.collaborator_id === collab.id && g.month === month && g.year === year);
+      const existing = sdrGoals.find((g) => g.collaborator_id === collab.id && g.month === month && g.year === year && g.week_number === selectedWeek);
 
       if (existing) {
         await supabase
@@ -221,6 +251,7 @@ const PreSales = () => {
             collaborator_id: collab.id,
             month,
             year,
+            week_number: selectedWeek,
             conversations_goal: vals.conversations,
             replies_goal: vals.replies,
             calls_goal: vals.calls,
@@ -323,17 +354,31 @@ const PreSales = () => {
 
       {/* SDR Performance Table */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <TrendingUp className="h-5 w-5 text-primary" />
-            Performance dos SDRs — {filterLabel}
-          </CardTitle>
-          {role === "admin" && (
-            <Button variant="outline" size="sm" onClick={openGoalsDialog} className="gap-1.5">
-              <Target className="h-4 w-4" />
-              Definir Metas
-            </Button>
-          )}
+        <CardHeader className="flex flex-col gap-3">
+          <div className="flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              Performance dos SDRs — {filterLabel}
+            </CardTitle>
+            {role === "admin" && (
+              <Button variant="outline" size="sm" onClick={openGoalsDialog} className="gap-1.5">
+                <Target className="h-4 w-4" />
+                Definir Metas
+              </Button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Label className="text-sm text-muted-foreground">Semana:</Label>
+            <select
+              className="border border-border rounded-md px-3 py-1.5 text-sm bg-background text-foreground"
+              value={selectedWeek}
+              onChange={(e) => setSelectedWeek(Number(e.target.value))}
+            >
+              {availableWeeks.map((w) => (
+                <option key={w.weekNum} value={w.weekNum}>{w.label}</option>
+              ))}
+            </select>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -378,7 +423,7 @@ const PreSales = () => {
 
                   const month = filterStart.getMonth() + 1;
                   const year = filterStart.getFullYear();
-                  const goal = sdrGoals.find((g) => g.collaborator_id === collab.id && g.month === month && g.year === year);
+                  const goal = sdrGoals.find((g) => g.collaborator_id === collab.id && g.month === month && g.year === year && g.week_number === selectedWeek);
 
                   const renderWithGoal = (actual: number, goalVal: number | undefined) => {
                     if (!goalVal || goalVal === 0) return <span>{actual}</span>;
@@ -432,7 +477,7 @@ const PreSales = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Target className="h-5 w-5 text-primary" />
-              Definir Metas dos SDRs — {format(filterStart, "MM/yyyy")}
+              Definir Metas dos SDRs — Semana {selectedWeek} ({format(filterStart, "MM/yyyy")})
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 max-h-[60vh] overflow-y-auto">
