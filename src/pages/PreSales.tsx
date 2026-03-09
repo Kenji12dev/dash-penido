@@ -269,7 +269,7 @@ const PreSales = () => {
     }));
   }, [filteredSales, collaborators]);
 
-  // Build SDR metrics comparison chart
+  // Build SDR metrics comparison chart - calls come from sales (appointments)
   const metricsChartData = useMemo(() => {
     const sdrNames = collaborators.map((c) => c.name);
     const sdrMap = Object.fromEntries(collaborators.map((c) => [c.id, c.name]));
@@ -282,7 +282,12 @@ const PreSales = () => {
       if (name && totals[name]) {
         totals[name].conversations += m.conversations_started;
         totals[name].replies += m.first_replies;
-        totals[name].calls += m.calls_scheduled;
+      }
+    });
+    // Count calls from actual sales/appointments
+    filteredSales.forEach((sale) => {
+      if (totals[sale.sdr]) {
+        totals[sale.sdr].calls++;
       }
     });
     return sdrNames.map((name) => ({
@@ -291,7 +296,7 @@ const PreSales = () => {
       "Respostas": totals[name]?.replies || 0,
       "Calls Marcadas": totals[name]?.calls || 0,
     }));
-  }, [allMetrics, collaborators]);
+  }, [allMetrics, collaborators, filteredSales]);
 
   const filterLabel = `${format(filterStart, "dd/MM/yy")} — ${format(filterEnd, "dd/MM/yy")}`;
   const isSDR = myCollaborator !== null;
