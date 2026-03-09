@@ -250,9 +250,51 @@ const PreSales = () => {
 
   return (
     <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-foreground">Pré-vendas</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Date range filter */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className={cn("gap-1.5 text-xs", filterStartDate && "border-primary text-primary")}>
+                <CalendarIcon className="h-3.5 w-3.5" />
+                {filterStartDate ? format(filterStartDate, "dd/MM", { locale: ptBR }) : "De"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={filterStartDate}
+                onSelect={setFilterStartDate}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className={cn("gap-1.5 text-xs", filterEndDate && "border-primary text-primary")}>
+                <CalendarIcon className="h-3.5 w-3.5" />
+                {filterEndDate ? format(filterEndDate, "dd/MM", { locale: ptBR }) : "Até"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={filterEndDate}
+                onSelect={setFilterEndDate}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+          {(filterStartDate || filterEndDate) && (
+            <Button variant="ghost" size="sm" onClick={() => { setFilterStartDate(undefined); setFilterEndDate(undefined); }} className="text-xs gap-1 text-muted-foreground hover:text-destructive">
+              <X className="h-3.5 w-3.5" />
+              Limpar
+            </Button>
+          )}
+
           <Select value={String(selectedMonth)} onValueChange={(v) => setSelectedMonth(Number(v))}>
             <SelectTrigger className="w-[140px]">
               <SelectValue />
