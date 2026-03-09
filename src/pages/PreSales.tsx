@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { useAuth } from "@/context/AuthContext";
 import { useSales } from "@/context/SalesContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
