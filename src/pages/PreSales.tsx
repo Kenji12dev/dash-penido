@@ -61,6 +61,7 @@ const PreSales = () => {
   const [goalsDialogOpen, setGoalsDialogOpen] = useState(false);
   const [editingGoals, setEditingGoals] = useState<Record<string, { conversations: number; replies: number; calls: number }>>({});
   const [savingGoals, setSavingGoals] = useState(false);
+  const [selectedWeek, setSelectedWeek] = useState(getISOWeek(new Date()));
 
   // Fetch SDR collaborators
   useEffect(() => {
