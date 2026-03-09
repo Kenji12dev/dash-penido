@@ -7,15 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import DateFilter from "@/components/dashboard/DateFilter";
 import { toast } from "sonner";
-import { format, startOfMonth, endOfMonth, parseISO, isWithinInterval, startOfDay, endOfDay } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { format, startOfMonth, endOfDay, parseISO, isWithinInterval, startOfDay } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from "recharts";
-import { MessageSquare, Reply, Phone, Save, CalendarDays, TrendingUp, CalendarIcon, X } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { MessageSquare, Reply, Phone, Save, CalendarDays, TrendingUp } from "lucide-react";
 
 interface SdrMetric {
   id: string;
@@ -45,10 +41,8 @@ const PreSales = () => {
   const [firstReplies, setFirstReplies] = useState(0);
   const [callsScheduled, setCallsScheduled] = useState(0);
   const [saving, setSaving] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [filterStartDate, setFilterStartDate] = useState<Date | undefined>(undefined);
-  const [filterEndDate, setFilterEndDate] = useState<Date | undefined>(undefined);
+  const [filterStart, setFilterStart] = useState<Date>(startOfMonth(new Date()));
+  const [filterEnd, setFilterEnd] = useState<Date>(endOfDay(new Date()));
 
   // Fetch SDR collaborators
   useEffect(() => {
@@ -67,11 +61,11 @@ const PreSales = () => {
     fetch();
   }, [user]);
 
-  // Fetch all metrics for the selected month
+  // Fetch metrics based on filter dates
   useEffect(() => {
     const fetchMetrics = async () => {
-      const start = format(startOfMonth(new Date(selectedYear, selectedMonth)), "yyyy-MM-dd");
-      const end = format(endOfMonth(new Date(selectedYear, selectedMonth)), "yyyy-MM-dd");
+      const start = format(filterStart, "yyyy-MM-dd");
+      const end = format(filterEnd, "yyyy-MM-dd");
       const { data } = await supabase
         .from("sdr_daily_metrics")
         .select("*")
@@ -80,7 +74,7 @@ const PreSales = () => {
       if (data) setAllMetrics(data as SdrMetric[]);
     };
     fetchMetrics();
-  }, [selectedMonth, selectedYear]);
+  }, [filterStart, filterEnd]);
 
   // Load existing data for selected date
   useEffect(() => {
@@ -154,45 +148,21 @@ const PreSales = () => {
     setSaving(false);
   };
 
-  // Filter metrics by date range
-  const filteredMetrics = useMemo(() => {
-    if (!filterStartDate && !filterEndDate) return allMetrics;
-    return allMetrics.filter((m) => {
-      const d = parseISO(m.date);
-      if (filterStartDate && filterEndDate) {
-        return isWithinInterval(d, { start: startOfDay(filterStartDate), end: endOfDay(filterEndDate) });
-      }
-      if (filterStartDate) return d >= startOfDay(filterStartDate);
-      if (filterEndDate) return d <= endOfDay(filterEndDate);
-      return true;
-    });
-  }, [allMetrics, filterStartDate, filterEndDate]);
-
   // Filter sales by date range
   const filteredSales = useMemo(() => {
-    const monthStart = startOfMonth(new Date(selectedYear, selectedMonth));
-    const monthEnd = endOfMonth(new Date(selectedYear, selectedMonth));
     return sales.filter((s) => {
       const d = new Date(s.date);
-      if (d < monthStart || d > monthEnd) return false;
-      if (filterStartDate && filterEndDate) {
-        return isWithinInterval(d, { start: startOfDay(filterStartDate), end: endOfDay(filterEndDate) });
-      }
-      if (filterStartDate) return d >= startOfDay(filterStartDate);
-      if (filterEndDate) return d <= endOfDay(filterEndDate);
-      return true;
+      return isWithinInterval(d, { start: startOfDay(filterStart), end: endOfDay(filterEnd) });
     });
-  }, [sales, selectedMonth, selectedYear, filterStartDate, filterEndDate]);
+  }, [sales, filterStart, filterEnd]);
 
-  // Build comparison chart data: appointments from sales (Kanban integration)
+  // Build comparison chart data
   const appointmentChartData = useMemo(() => {
     const sdrNames = collaborators.map((c) => c.name);
-
     const sdrCounts: Record<string, { total: number; pago: number; pendente: number; followUp: number; loss: number }> = {};
     sdrNames.forEach((name) => {
       sdrCounts[name] = { total: 0, pago: 0, pendente: 0, followUp: 0, loss: 0 };
     });
-
     filteredSales.forEach((sale) => {
       if (sdrCounts[sale.sdr]) {
         sdrCounts[sale.sdr].total++;
@@ -203,7 +173,6 @@ const PreSales = () => {
         else if (status === "loss") sdrCounts[sale.sdr].loss++;
       }
     });
-
     return sdrNames.map((name) => ({
       name,
       Total: sdrCounts[name]?.total || 0,
@@ -218,13 +187,11 @@ const PreSales = () => {
   const metricsChartData = useMemo(() => {
     const sdrNames = collaborators.map((c) => c.name);
     const sdrMap = Object.fromEntries(collaborators.map((c) => [c.id, c.name]));
-
     const totals: Record<string, { conversations: number; replies: number; calls: number }> = {};
     sdrNames.forEach((name) => {
       totals[name] = { conversations: 0, replies: 0, calls: 0 };
     });
-
-    filteredMetrics.forEach((m) => {
+    allMetrics.forEach((m) => {
       const name = sdrMap[m.collaborator_id];
       if (name && totals[name]) {
         totals[name].conversations += m.conversations_started;
@@ -232,94 +199,29 @@ const PreSales = () => {
         totals[name].calls += m.calls_scheduled;
       }
     });
-
     return sdrNames.map((name) => ({
       name,
       "Conversas Iniciadas": totals[name]?.conversations || 0,
       "Respostas": totals[name]?.replies || 0,
       "Calls Marcadas": totals[name]?.calls || 0,
     }));
-  }, [filteredMetrics, collaborators]);
+  }, [allMetrics, collaborators]);
 
-  const months = Array.from({ length: 12 }, (_, i) => ({
-    value: i,
-    label: format(new Date(2024, i, 1), "MMMM", { locale: ptBR }),
-  }));
-
+  const filterLabel = `${format(filterStart, "dd/MM/yy")} — ${format(filterEnd, "dd/MM/yy")}`;
   const isSDR = myCollaborator !== null;
 
   return (
     <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-6 space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-foreground">Pré-vendas</h1>
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Date range filter */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className={cn("gap-1.5 text-xs", filterStartDate && "border-primary text-primary")}>
-                <CalendarIcon className="h-3.5 w-3.5" />
-                {filterStartDate ? format(filterStartDate, "dd/MM", { locale: ptBR }) : "De"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={filterStartDate}
-                onSelect={setFilterStartDate}
-                initialFocus
-                className={cn("p-3 pointer-events-auto")}
-              />
-            </PopoverContent>
-          </Popover>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className={cn("gap-1.5 text-xs", filterEndDate && "border-primary text-primary")}>
-                <CalendarIcon className="h-3.5 w-3.5" />
-                {filterEndDate ? format(filterEndDate, "dd/MM", { locale: ptBR }) : "Até"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={filterEndDate}
-                onSelect={setFilterEndDate}
-                initialFocus
-                className={cn("p-3 pointer-events-auto")}
-              />
-            </PopoverContent>
-          </Popover>
-          {(filterStartDate || filterEndDate) && (
-            <Button variant="ghost" size="sm" onClick={() => { setFilterStartDate(undefined); setFilterEndDate(undefined); }} className="text-xs gap-1 text-muted-foreground hover:text-destructive">
-              <X className="h-3.5 w-3.5" />
-              Limpar
-            </Button>
-          )}
-
-          <Select value={String(selectedMonth)} onValueChange={(v) => setSelectedMonth(Number(v))}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {months.map((m) => (
-                <SelectItem key={m.value} value={String(m.value)}>
-                  {m.label.charAt(0).toUpperCase() + m.label.slice(1)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
-            <SelectTrigger className="w-[100px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {[2024, 2025, 2026].map((y) => (
-                <SelectItem key={y} value={String(y)}>
-                  {y}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-foreground">Pré-vendas</h1>
         </div>
+        <DateFilter
+          startDate={filterStart}
+          endDate={filterEnd}
+          onStartDateChange={setFilterStart}
+          onEndDateChange={setFilterEnd}
+        />
       </div>
 
       {/* SDR Daily Input */}
@@ -399,7 +301,7 @@ const PreSales = () => {
       {/* SDR Metrics Chart */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Métricas de Pré-venda — {months[selectedMonth].label.charAt(0).toUpperCase() + months[selectedMonth].label.slice(1)}/{selectedYear}</CardTitle>
+          <CardTitle className="text-lg">Métricas de Pré-venda — {filterLabel}</CardTitle>
         </CardHeader>
         <CardContent>
           {metricsChartData.length > 0 ? (
@@ -423,15 +325,15 @@ const PreSales = () => {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <p className="text-muted-foreground text-sm text-center py-10">Nenhum dado registrado neste mês.</p>
+            <p className="text-muted-foreground text-sm text-center py-10">Nenhum dado registrado neste período.</p>
           )}
         </CardContent>
       </Card>
 
-      {/* Appointments Comparison Chart (from sales/kanban) */}
+      {/* Appointments Comparison Chart */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Agendamentos por SDR — {months[selectedMonth].label.charAt(0).toUpperCase() + months[selectedMonth].label.slice(1)}/{selectedYear}</CardTitle>
+          <CardTitle className="text-lg">Agendamentos por SDR — {filterLabel}</CardTitle>
         </CardHeader>
         <CardContent>
           {appointmentChartData.length > 0 ? (
@@ -457,7 +359,7 @@ const PreSales = () => {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <p className="text-muted-foreground text-sm text-center py-10">Nenhum agendamento encontrado neste mês.</p>
+            <p className="text-muted-foreground text-sm text-center py-10">Nenhum agendamento encontrado neste período.</p>
           )}
         </CardContent>
       </Card>
@@ -467,7 +369,7 @@ const PreSales = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <TrendingUp className="h-5 w-5 text-primary" />
-            Performance dos SDRs — {months[selectedMonth].label.charAt(0).toUpperCase() + months[selectedMonth].label.slice(1)}/{selectedYear}
+            Performance dos SDRs — {filterLabel}
           </CardTitle>
         </CardHeader>
         <CardContent>
