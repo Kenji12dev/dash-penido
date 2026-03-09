@@ -237,8 +237,6 @@ const PreSales = () => {
         await supabase
           .from("sdr_goals")
           .update({
-            conversations_goal: vals.conversations,
-            replies_goal: vals.replies,
             calls_goal: vals.calls,
           } as any)
           .eq("id", existing.id);
@@ -250,8 +248,6 @@ const PreSales = () => {
             month,
             year,
             week_number: selectedWeek,
-            conversations_goal: vals.conversations,
-            replies_goal: vals.replies,
             calls_goal: vals.calls,
           } as any);
       }
