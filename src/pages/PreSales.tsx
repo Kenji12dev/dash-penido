@@ -323,11 +323,17 @@ const PreSales = () => {
 
       {/* SDR Performance Table */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
             <TrendingUp className="h-5 w-5 text-primary" />
             Performance dos SDRs — {filterLabel}
           </CardTitle>
+          {role === "admin" && (
+            <Button variant="outline" size="sm" onClick={openGoalsDialog} className="gap-1.5">
+              <Target className="h-4 w-4" />
+              Definir Metas
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <Table>
@@ -370,12 +376,27 @@ const PreSales = () => {
                   const scheduleRate = replies > 0 ? ((calls / replies) * 100).toFixed(1) : "—";
                   const conversionRate = total > 0 ? ((pago / total) * 100).toFixed(1) : "—";
 
+                  const month = filterStart.getMonth() + 1;
+                  const year = filterStart.getFullYear();
+                  const goal = sdrGoals.find((g) => g.collaborator_id === collab.id && g.month === month && g.year === year);
+
+                  const renderWithGoal = (actual: number, goalVal: number | undefined) => {
+                    if (!goalVal || goalVal === 0) return <span>{actual}</span>;
+                    const pct = Math.min((actual / goalVal) * 100, 100);
+                    return (
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="text-xs">{actual}/{goalVal}</span>
+                        <Progress value={pct} className="h-1.5 w-16" />
+                      </div>
+                    );
+                  };
+
                   return (
                     <TableRow key={collab.id}>
                       <TableCell className="font-medium">{collab.name}</TableCell>
-                      <TableCell className="text-center">{conversations}</TableCell>
-                      <TableCell className="text-center">{replies}</TableCell>
-                      <TableCell className="text-center">{calls}</TableCell>
+                      <TableCell className="text-center">{renderWithGoal(conversations, goal?.conversations_goal)}</TableCell>
+                      <TableCell className="text-center">{renderWithGoal(replies, goal?.replies_goal)}</TableCell>
+                      <TableCell className="text-center">{renderWithGoal(calls, goal?.calls_goal)}</TableCell>
                       <TableCell className="text-center">
                         <span className={replyRate !== "—" ? "text-primary font-medium" : "text-muted-foreground"}>
                           {replyRate !== "—" ? `${replyRate}%` : "—"}
@@ -404,6 +425,69 @@ const PreSales = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Goals Dialog */}
+      <Dialog open={goalsDialogOpen} onOpenChange={setGoalsDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5 text-primary" />
+              Definir Metas dos SDRs — {format(filterStart, "MM/yyyy")}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+            {collaborators.map((collab) => (
+              <div key={collab.id} className="border border-border rounded-lg p-4 space-y-3">
+                <p className="font-medium text-foreground">{collab.name}</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Conversas</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={editingGoals[collab.id]?.conversations ?? 0}
+                      onChange={(e) => setEditingGoals((prev) => ({
+                        ...prev,
+                        [collab.id]: { ...prev[collab.id], conversations: Number(e.target.value) },
+                      }))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Respostas</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={editingGoals[collab.id]?.replies ?? 0}
+                      onChange={(e) => setEditingGoals((prev) => ({
+                        ...prev,
+                        [collab.id]: { ...prev[collab.id], replies: Number(e.target.value) },
+                      }))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Calls</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={editingGoals[collab.id]?.calls ?? 0}
+                      onChange={(e) => setEditingGoals((prev) => ({
+                        ...prev,
+                        [collab.id]: { ...prev[collab.id], calls: Number(e.target.value) },
+                      }))}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-end pt-2">
+            <Button onClick={handleSaveGoals} disabled={savingGoals}>
+              <Save className="h-4 w-4 mr-2" />
+              {savingGoals ? "Salvando..." : "Salvar Metas"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* SDR Metrics Chart */}
       <Card>
