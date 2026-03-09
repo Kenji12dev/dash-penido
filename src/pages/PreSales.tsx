@@ -398,22 +398,15 @@ const PreSales = () => {
                   return (
                     <div key={collab.id}>
                       <p className="text-sm font-semibold text-foreground mb-3">{collab.name}</p>
-                      <div className="space-y-3">
-                        {items.map((item) => {
-                          const pct = Math.min((item.actual / item.target) * 100, 100);
-                          return (
-                            <div key={item.label} className="space-y-1.5">
-                              <div className="flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">{item.label}</span>
-                                <span className="font-semibold text-foreground">
-                                  {item.actual} / {item.target}
-                                </span>
-                              </div>
-                              <Progress value={pct} className="h-3" />
-                              <p className="text-xs text-muted-foreground text-right">{pct.toFixed(1)}%</p>
-                            </div>
-                          );
-                        })}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Calls Marcadas</span>
+                          <span className="font-semibold text-foreground">
+                            {calls} / {goal.calls_goal}
+                          </span>
+                        </div>
+                        <Progress value={pct} className="h-3" />
+                        <p className="text-xs text-muted-foreground text-right">{pct.toFixed(1)}%</p>
                       </div>
                     </div>
                   );
