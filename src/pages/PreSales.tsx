@@ -11,7 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import DateFilter from "@/components/dashboard/DateFilter";
 import { toast } from "sonner";
-import { format, startOfMonth, endOfDay, parseISO, isWithinInterval, startOfDay, getISOWeek, startOfWeek, endOfWeek, addWeeks, getWeeksInMonth, startOfISOWeek } from "date-fns";
+import { format, startOfMonth, endOfMonth, endOfDay, parseISO, isWithinInterval, startOfDay, getDaysInMonth, differenceInCalendarDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from "recharts";
 import { MessageSquare, Reply, Phone, Save, CalendarDays, TrendingUp, Pencil, Target } from "lucide-react";
@@ -61,7 +61,7 @@ const PreSales = () => {
   const [goalsDialogOpen, setGoalsDialogOpen] = useState(false);
   const [editingGoals, setEditingGoals] = useState<Record<string, { calls: number }>>({});
   const [savingGoals, setSavingGoals] = useState(false);
-  const [selectedWeek, setSelectedWeek] = useState(getISOWeek(new Date()));
+  
 
   // Fetch SDR collaborators
   useEffect(() => {
@@ -95,32 +95,6 @@ const PreSales = () => {
     fetchMetrics();
   }, [filterStart, filterEnd]);
 
-  // Compute available weeks for the filtered month
-  const availableWeeks = useMemo(() => {
-    const month = filterStart.getMonth();
-    const year = filterStart.getFullYear();
-    const weeks: { weekNum: number; label: string }[] = [];
-    let d = startOfMonth(new Date(year, month));
-    const seen = new Set<number>();
-    while (d.getMonth() === month) {
-      const wn = getISOWeek(d);
-      if (!seen.has(wn)) {
-        seen.add(wn);
-        const ws = startOfWeek(d, { weekStartsOn: 1 });
-        const we = endOfWeek(d, { weekStartsOn: 1 });
-        weeks.push({ weekNum: wn, label: `Sem ${wn} (${format(ws, "dd/MM")} - ${format(we, "dd/MM")})` });
-      }
-      d = addWeeks(startOfWeek(d, { weekStartsOn: 1 }), 1);
-    }
-    return weeks;
-  }, [filterStart]);
-
-  // Reset selected week when month changes
-  useEffect(() => {
-    if (availableWeeks.length > 0 && !availableWeeks.find(w => w.weekNum === selectedWeek)) {
-      setSelectedWeek(availableWeeks[0].weekNum);
-    }
-  }, [availableWeeks]);
 
   // Fetch SDR goals for current month (all weeks)
   useEffect(() => {
@@ -214,7 +188,7 @@ const PreSales = () => {
     const year = filterStart.getFullYear();
     const initial: Record<string, { calls: number }> = {};
     collaborators.forEach((c) => {
-      const goal = sdrGoals.find((g) => g.collaborator_id === c.id && g.month === month && g.year === year && g.week_number === selectedWeek);
+      const goal = sdrGoals.find((g) => g.collaborator_id === c.id && g.month === month && g.year === year);
       initial[c.id] = {
         calls: goal?.calls_goal || 0,
       };
@@ -231,7 +205,7 @@ const PreSales = () => {
     for (const collab of collaborators) {
       const vals = editingGoals[collab.id];
       if (!vals) continue;
-      const existing = sdrGoals.find((g) => g.collaborator_id === collab.id && g.month === month && g.year === year && g.week_number === selectedWeek);
+      const existing = sdrGoals.find((g) => g.collaborator_id === collab.id && g.month === month && g.year === year);
 
       if (existing) {
         await supabase
@@ -247,7 +221,7 @@ const PreSales = () => {
             collaborator_id: collab.id,
             month,
             year,
-            week_number: selectedWeek,
+            week_number: 1,
             calls_goal: vals.calls,
           } as any);
       }
@@ -346,13 +320,19 @@ const PreSales = () => {
         </Card>
       )}
 
-      {/* Weekly SDR Goals Card - like Dashboard MonthlyGoals */}
+      {/* Monthly SDR Goals Card with daily pace */}
       {(() => {
         const month = filterStart.getMonth() + 1;
         const year = filterStart.getFullYear();
-        const weekLabel = availableWeeks.find(w => w.weekNum === selectedWeek)?.label || `Sem ${selectedWeek}`;
+        const totalDays = getDaysInMonth(new Date(year, month - 1));
+        const today = new Date();
+        const monthStart = startOfMonth(new Date(year, month - 1));
+        const daysPassed = Math.min(
+          differenceInCalendarDays(today, monthStart) + 1,
+          totalDays
+        );
         const hasAnyGoal = collaborators.some((c) => {
-          const goal = sdrGoals.find((g) => g.collaborator_id === c.id && g.month === month && g.year === year && g.week_number === selectedWeek);
+          const goal = sdrGoals.find((g) => g.collaborator_id === c.id && g.month === month && g.year === year);
           return goal && goal.calls_goal > 0;
         });
 
@@ -364,40 +344,37 @@ const PreSales = () => {
               <div className="flex items-center gap-2">
                 <Target className="h-4 w-4 text-primary" />
                 <h2 className="text-sm font-semibold tracking-[0.1em] uppercase text-muted-foreground">
-                  Metas Semanais dos SDRs
+                  Metas Mensais dos SDRs — {format(new Date(year, month - 1), "MMMM yyyy", { locale: ptBR })}
                 </h2>
               </div>
-              <div className="flex items-center gap-3">
-                <select
-                  className="border border-border rounded-md px-3 py-1.5 text-sm bg-background text-foreground"
-                  value={selectedWeek}
-                  onChange={(e) => setSelectedWeek(Number(e.target.value))}
-                >
-                  {availableWeeks.map((w) => (
-                    <option key={w.weekNum} value={w.weekNum}>{w.label}</option>
-                  ))}
-                </select>
-                {role === "admin" && (
-                  <Button variant="ghost" size="sm" onClick={openGoalsDialog} className="text-xs">
-                    Editar Metas
-                  </Button>
-                )}
-              </div>
+              {role === "admin" && (
+                <Button variant="ghost" size="sm" onClick={openGoalsDialog} className="text-xs">
+                  Editar Metas
+                </Button>
+              )}
             </div>
 
             {hasAnyGoal ? (
               <div className="space-y-6 mt-4">
                 {collaborators.map((collab) => {
-                   const goal = sdrGoals.find((g) => g.collaborator_id === collab.id && g.month === month && g.year === year && g.week_number === selectedWeek);
+                  const goal = sdrGoals.find((g) => g.collaborator_id === collab.id && g.month === month && g.year === year);
                   if (!goal || goal.calls_goal === 0) return null;
 
                   const metrics = metricsChartData.find((m) => m.name === collab.name);
                   const calls = metrics?.["Calls Marcadas"] || 0;
                   const pct = Math.min((calls / goal.calls_goal) * 100, 100);
+                  const idealPace = Math.round((goal.calls_goal / totalDays) * daysPassed);
+                  const dailyAvg = daysPassed > 0 ? (calls / daysPassed).toFixed(1) : "0.0";
+                  const needsPerDay = daysPassed < totalDays 
+                    ? Math.max(0, Math.ceil((goal.calls_goal - calls) / (totalDays - daysPassed)))
+                    : 0;
 
                   return (
                     <div key={collab.id}>
-                      <p className="text-sm font-semibold text-foreground mb-3">{collab.name}</p>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-sm font-semibold text-foreground">{collab.name}</p>
+                        <span className="text-xs text-muted-foreground">Dia {daysPassed}/{totalDays}</span>
+                      </div>
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-muted-foreground">Calls Marcadas</span>
@@ -405,15 +382,33 @@ const PreSales = () => {
                             {calls} / {goal.calls_goal}
                           </span>
                         </div>
-                        <Progress value={pct} className="h-3" />
-                        <p className="text-xs text-muted-foreground text-right">{pct.toFixed(1)}%</p>
+                        <div className="relative">
+                          <Progress value={pct} className="h-3" />
+                          {/* Ideal pace marker */}
+                          <div 
+                            className="absolute top-0 h-3 w-0.5 bg-foreground/40"
+                            style={{ left: `${Math.min((idealPace / goal.calls_goal) * 100, 100)}%` }}
+                            title={`Ritmo ideal: ${idealPace}`}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>
+                            Média: {dailyAvg}/dia · Ritmo ideal: {idealPace}
+                          </span>
+                          <span className="font-medium">
+                            {pct.toFixed(1)}%
+                            {daysPassed < totalDays && needsPerDay > 0 && (
+                              <span className="ml-1">· Precisa {needsPerDay}/dia</span>
+                            )}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground mt-2">Nenhuma meta definida para esta semana. Clique em "Editar Metas" para configurar.</p>
+              <p className="text-sm text-muted-foreground mt-2">Nenhuma meta definida para este mês. Clique em "Editar Metas" para configurar.</p>
             )}
           </div>
         );
@@ -509,7 +504,7 @@ const PreSales = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Target className="h-5 w-5 text-primary" />
-              Definir Metas dos SDRs — Semana {selectedWeek} ({format(filterStart, "MM/yyyy")})
+              Definir Metas dos SDRs — {format(filterStart, "MMMM yyyy", { locale: ptBR })}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 max-h-[60vh] overflow-y-auto">
