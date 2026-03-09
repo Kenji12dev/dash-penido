@@ -31,6 +31,7 @@ interface SdrGoal {
   collaborator_id: string;
   month: number;
   year: number;
+  week_number: number;
   conversations_goal: number;
   replies_goal: number;
   calls_goal: number;
