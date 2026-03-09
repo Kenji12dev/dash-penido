@@ -95,32 +95,6 @@ const PreSales = () => {
     fetchMetrics();
   }, [filterStart, filterEnd]);
 
-  // Compute available weeks for the filtered month
-  const availableWeeks = useMemo(() => {
-    const month = filterStart.getMonth();
-    const year = filterStart.getFullYear();
-    const weeks: { weekNum: number; label: string }[] = [];
-    let d = startOfMonth(new Date(year, month));
-    const seen = new Set<number>();
-    while (d.getMonth() === month) {
-      const wn = getISOWeek(d);
-      if (!seen.has(wn)) {
-        seen.add(wn);
-        const ws = startOfWeek(d, { weekStartsOn: 1 });
-        const we = endOfWeek(d, { weekStartsOn: 1 });
-        weeks.push({ weekNum: wn, label: `Sem ${wn} (${format(ws, "dd/MM")} - ${format(we, "dd/MM")})` });
-      }
-      d = addWeeks(startOfWeek(d, { weekStartsOn: 1 }), 1);
-    }
-    return weeks;
-  }, [filterStart]);
-
-  // Reset selected week when month changes
-  useEffect(() => {
-    if (availableWeeks.length > 0 && !availableWeeks.find(w => w.weekNum === selectedWeek)) {
-      setSelectedWeek(availableWeeks[0].weekNum);
-    }
-  }, [availableWeeks]);
 
   // Fetch SDR goals for current month (all weeks)
   useEffect(() => {
