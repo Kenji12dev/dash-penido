@@ -540,68 +540,82 @@ const PreSales = () => {
         </DialogContent>
       </Dialog>
 
-      {/* SDR Metrics Chart */}
+      {/* Funil de Conversão por SDR */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Métricas de Pré-venda — {filterLabel}</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            Funil de Conversão por SDR — {filterLabel}
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          {metricsChartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={320}>
-              <BarChart data={metricsChartData} barGap={4} barCategoryGap="20%">
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="name" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
-                <YAxis allowDecimals={false} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
-                <Tooltip
-                  contentStyle={{
-                    background: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: 8,
-                    color: "hsl(var(--foreground))",
-                  }}
-                />
-                <Legend />
-                <Bar dataKey="Conversas Iniciadas" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Respostas" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Calls Marcadas" fill="hsl(220, 70%, 55%)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          {collaborators.length === 0 ? (
+            <p className="text-muted-foreground text-sm text-center py-10">Nenhum SDR cadastrado.</p>
           ) : (
-            <p className="text-muted-foreground text-sm text-center py-10">Nenhum dado registrado neste período.</p>
-          )}
-        </CardContent>
-      </Card>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {collaborators.map((collab) => {
+                const metrics = metricsChartData.find((m) => m.name === collab.name);
+                const conversations = metrics?.["Conversas Iniciadas"] || 0;
+                const replies = metrics?.["Respostas"] || 0;
+                const calls = metrics?.["Calls Marcadas"] || 0;
 
-      {/* Appointments Comparison Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Agendamentos por SDR — {filterLabel}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {appointmentChartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={320}>
-              <BarChart data={appointmentChartData} barGap={4} barCategoryGap="20%">
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="name" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
-                <YAxis allowDecimals={false} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
-                <Tooltip
-                  contentStyle={{
-                    background: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: 8,
-                    color: "hsl(var(--foreground))",
-                  }}
-                />
-                <Legend />
-                <Bar dataKey="Total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Pago" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Pendente" fill="hsl(48, 96%, 53%)" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Follow Up" fill="hsl(220, 70%, 55%)" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Loss" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="text-muted-foreground text-sm text-center py-10">Nenhum agendamento encontrado neste período.</p>
+                const replyRate = conversations > 0 ? ((replies / conversations) * 100).toFixed(1) : "0.0";
+                const callRate = replies > 0 ? ((calls / replies) * 100).toFixed(1) : "0.0";
+                const overallRate = conversations > 0 ? ((calls / conversations) * 100).toFixed(1) : "0.0";
+
+                const maxVal = Math.max(conversations, 1);
+
+                const funnelSteps = [
+                  { stage: "Conversas Iniciadas", value: conversations, color: "hsl(var(--primary))" },
+                  { stage: "Respostas 1ª Msg", value: replies, color: "hsl(var(--accent))" },
+                  { stage: "Calls Marcadas", value: calls, color: "hsl(220, 70%, 55%)" },
+                ];
+
+                return (
+                  <div key={collab.id} className="border border-border rounded-lg p-4 space-y-4">
+                    <p className="font-semibold text-foreground text-sm">{collab.name}</p>
+                    
+                    <div className="space-y-3">
+                      {funnelSteps.map((item, idx) => {
+                        const widthPct = maxVal > 0 ? Math.max((item.value / maxVal) * 100, 4) : 4;
+                        return (
+                          <div key={item.stage} className="space-y-1">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground">{item.stage}</span>
+                              <span className="font-semibold text-foreground">{item.value}</span>
+                            </div>
+                            <div className="w-full bg-secondary rounded-full h-6 overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all duration-500 flex items-center justify-end pr-2"
+                                style={{ width: `${widthPct}%`, backgroundColor: item.color }}
+                              >
+                                {widthPct > 15 && (
+                                  <span className="text-[10px] font-medium text-white">{item.value}</span>
+                                )}
+                              </div>
+                            </div>
+                            {idx < funnelSteps.length - 1 && (
+                              <div className="flex justify-center">
+                                <span className="text-[10px] text-muted-foreground">
+                                  ↓ {idx === 0 ? `${replyRate}%` : `${callRate}%`}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="pt-2 border-t border-border">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Conversão geral (Conversa → Call)</span>
+                        <span className="font-bold text-primary">{overallRate}%</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </CardContent>
       </Card>
