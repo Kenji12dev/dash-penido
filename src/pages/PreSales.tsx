@@ -11,7 +11,7 @@ import DateFilter from "@/components/dashboard/DateFilter";
 import { toast } from "sonner";
 import { format, startOfMonth, endOfDay, parseISO, isWithinInterval, startOfDay } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from "recharts";
-import { MessageSquare, Reply, Phone, Save, CalendarDays, TrendingUp } from "lucide-react";
+import { MessageSquare, Reply, Phone, Save, CalendarDays, TrendingUp, Pencil } from "lucide-react";
 
 interface SdrMetric {
   id: string;
