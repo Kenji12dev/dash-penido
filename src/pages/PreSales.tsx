@@ -325,6 +325,16 @@ const PreSales = () => {
         </Card>
       )}
 
+      {!isSDR && role === "colaborador" && (
+        <Card>
+          <CardContent className="py-6">
+            <p className="text-muted-foreground text-sm">
+              Seu usuário ainda não está vinculado a um SDR. Peça ao administrador para vincular seu usuário ao seu registro de colaborador na aba de Colaboradores.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Monthly SDR Goals Card with daily pace */}
       {(() => {
         const month = filterStart.getMonth() + 1;
