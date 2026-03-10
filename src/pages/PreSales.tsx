@@ -354,11 +354,11 @@ const PreSales = () => {
               )}
             </div>
 
-            {hasAnyGoal ? (
+        {collaborators.length > 0 ? (
               <div className="space-y-6 mt-4">
                 {collaborators.map((collab) => {
                   const goal = sdrGoals.find((g) => g.collaborator_id === collab.id && g.month === month && g.year === year);
-                  if (!goal || goal.calls_goal === 0) return null;
+                  const callsGoal = goal?.calls_goal || 0;
 
                   const metrics = metricsChartData.find((m) => m.name === collab.name);
                   const calls = metrics?.["Calls Marcadas"] || 0;
