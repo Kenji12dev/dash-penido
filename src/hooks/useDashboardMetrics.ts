@@ -144,12 +144,14 @@ export const useDashboardMetrics = (
       }
     });
     const totalPayment = Array.from(paymentMap.values()).reduce((a, b) => a + b, 0) || 1;
-    const paymentData = Array.from(paymentMap.entries()).map(([method, value]) => ({
-      name: PAYMENT_METHOD_MAP[method]?.label || method,
-      value,
-      percentage: parseFloat(((value / totalPayment) * 100).toFixed(1)),
-      color: PAYMENT_METHOD_MAP[method]?.color || CHART_COLORS[3],
-    }));
+    const paymentData = Array.from(paymentMap.entries())
+      .filter(([method]) => method && method.trim() !== "")
+      .map(([method, value]) => ({
+        name: PAYMENT_METHOD_MAP[method]?.label || method,
+        value,
+        percentage: parseFloat(((value / totalPayment) * 100).toFixed(1)),
+        color: PAYMENT_METHOD_MAP[method]?.color || CHART_COLORS[3],
+      }));
 
     // Lead source distribution
     const leadSourceMap = new Map<string, number>();
