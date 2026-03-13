@@ -408,15 +408,9 @@ const PreSales = () => {
                           <p className="text-xs text-muted-foreground italic">Sem meta definida</p>
                         )}
                         </div>
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span>
-                            Média: {dailyAvg}/dia · Ritmo ideal: {idealPace}
-                          </span>
+                        <div className="flex items-center justify-end text-xs text-muted-foreground">
                           <span className="font-medium">
                             {pct.toFixed(1)}%
-                            {daysPassed < totalDays && needsPerDay > 0 && (
-                              <span className="ml-1">· Precisa {needsPerDay}/dia</span>
-                            )}
                           </span>
                         </div>
                       </div>
