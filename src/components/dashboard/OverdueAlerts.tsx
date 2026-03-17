@@ -39,7 +39,6 @@ const OverdueAlerts = ({ onGoToKanban }: OverdueAlertsProps) => {
     const nextDay = new Date(saleDate.getFullYear(), saleDate.getMonth(), saleDate.getDate() + 1);
     if (now < nextDay) return false;
     if (dismissed.has(s.id)) return false;
-    if (role === "admin") return true;
     if (!collaboratorName) return false;
     return s.closer === collaboratorName || s.sdr === collaboratorName;
   });
