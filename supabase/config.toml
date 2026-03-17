@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.google-calendar-event]
 verify_jwt = false
+
+[functions.google-calendar-events]
+verify_jwt = false

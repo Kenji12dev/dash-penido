@@ -8,6 +8,7 @@ import KanbanBoard from "@/pages/KanbanBoard";
 import Collaborators from "@/pages/Collaborators";
 import PreSales from "@/pages/PreSales";
 import Profile from "@/pages/Profile";
+import Agenda from "@/pages/Agenda";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -21,6 +22,7 @@ const Index = () => {
       {activeTab === "database" && <SalesDatabase />}
       {activeTab === "kanban" && <KanbanBoard />}
       {activeTab === "pre-sales" && <PreSales />}
+      {activeTab === "agenda" && <Agenda />}
       {activeTab === "collaborators" && role === "admin" && <Collaborators />}
       {activeTab === "profile" && <Profile />}
     </div>

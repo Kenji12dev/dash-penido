@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BarChart3, PlusCircle, Database, Columns3, Users, LogOut, Menu, X, UserCircle, Headset } from "lucide-react";
+import { BarChart3, PlusCircle, Database, Columns3, Users, LogOut, Menu, X, UserCircle, Headset, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ const AppNav = ({ activeTab, onTabChange }: AppNavProps) => {
     { id: "database", label: "Banco de Dados", icon: Database },
     { id: "kanban", label: "Fluxo de Status", icon: Columns3 },
     { id: "pre-sales", label: "Pré-vendas", icon: Headset },
+    { id: "agenda", label: "Agenda", icon: CalendarDays },
     ...(role === "admin"
       ? [{ id: "collaborators", label: "Colaboradores", icon: Users }]
       : []),
