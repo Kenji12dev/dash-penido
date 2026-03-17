@@ -3,6 +3,7 @@ import { startOfMonth } from "date-fns";
 import { useAuth } from "@/context/AuthContext";
 import DateFilter from "@/components/dashboard/DateFilter";
 import CalendarLinkCard from "@/components/dashboard/CalendarLinkCard";
+import OverdueAlerts from "@/components/dashboard/OverdueAlerts";
 import KPICard from "@/components/dashboard/KPICard";
 import RevenueChart from "@/components/dashboard/RevenueChart";
 import TeamPerformance from "@/components/dashboard/TeamPerformance";
