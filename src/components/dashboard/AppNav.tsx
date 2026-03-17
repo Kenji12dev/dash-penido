@@ -17,7 +17,6 @@ const AppNav = ({ activeTab, onTabChange }: AppNavProps) => {
   const tabs = [
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
     { id: "kanban", label: "Fluxo de Status", icon: Columns3 },
-    { id: "kanban", label: "Fluxo de Status", icon: Columns3 },
     { id: "pre-sales", label: "Pré-vendas", icon: Headset },
     { id: "agenda", label: "Agenda", icon: CalendarDays },
     ...(role === "admin"
