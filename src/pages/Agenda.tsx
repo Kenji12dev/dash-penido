@@ -83,7 +83,7 @@ const Agenda = () => {
       const { data } = await supabase
         .from("collaborators")
         .select("id, name, type")
-        .eq("type", "Closer")
+        .ilike("type", "closer")
         .order("name");
       if (data && data.length > 0) {
         setCollaborators(data);
