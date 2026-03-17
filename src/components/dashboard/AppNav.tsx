@@ -16,7 +16,6 @@ const AppNav = ({ activeTab, onTabChange }: AppNavProps) => {
 
   const tabs = [
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
-    { id: "add-sale", label: "Adicionar Venda", icon: PlusCircle },
     { id: "database", label: "Banco de Dados", icon: Database },
     { id: "kanban", label: "Fluxo de Status", icon: Columns3 },
     { id: "pre-sales", label: "Pré-vendas", icon: Headset },
