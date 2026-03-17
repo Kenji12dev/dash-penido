@@ -17,8 +17,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <AppNav activeTab={activeTab} onTabChange={setActiveTab} />
-      {activeTab === "dashboard" && <Dashboard />}
-      {activeTab === "kanban" && <KanbanBoard />}
+      {activeTab === "dashboard" && <Dashboard onGoToKanban={() => setActiveTab("kanban")} />}
       {activeTab === "kanban" && <KanbanBoard />}
       {activeTab === "pre-sales" && <PreSales />}
       {activeTab === "agenda" && <Agenda />}

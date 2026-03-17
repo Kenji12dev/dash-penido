@@ -3,6 +3,7 @@ import { startOfMonth } from "date-fns";
 import { useAuth } from "@/context/AuthContext";
 import DateFilter from "@/components/dashboard/DateFilter";
 import CalendarLinkCard from "@/components/dashboard/CalendarLinkCard";
+import OverdueAlerts from "@/components/dashboard/OverdueAlerts";
 import KPICard from "@/components/dashboard/KPICard";
 import RevenueChart from "@/components/dashboard/RevenueChart";
 import TeamPerformance from "@/components/dashboard/TeamPerformance";
@@ -17,7 +18,7 @@ import { PAYMENT_METHOD_MAP, LEAD_SOURCE_MAP } from "@/data/mockData";
 const formatValue = (v: number) =>
   `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-const Dashboard = () => {
+const Dashboard = ({ onGoToKanban }: { onGoToKanban: () => void }) => {
   const { role } = useAuth();
   const [startDate, setStartDate] = useState<Date>(startOfMonth(new Date()));
   const [endDate, setEndDate] = useState<Date>(new Date());
@@ -44,6 +45,7 @@ const Dashboard = () => {
     <div className="p-4 sm:p-6 lg:p-10">
       <div className="max-w-[1440px] mx-auto space-y-8">
         {role === "colaborador" && <CalendarLinkCard />}
+        <OverdueAlerts onGoToKanban={onGoToKanban} />
         <DateFilter
           startDate={startDate}
           endDate={endDate}
