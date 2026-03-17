@@ -356,6 +356,20 @@ const Agenda = () => {
         </div>
       </div>
 
+      {/* SDR color legend */}
+      <div className="flex items-center gap-4 flex-wrap">
+        <span className="text-xs text-muted-foreground font-medium">Legenda SDR:</span>
+        {Object.entries(SDR_COLORS).map(([name, color]) => (
+          <div key={name} className="flex items-center gap-1.5">
+            <div className={cn("w-3 h-3 rounded-sm", color.bg)} />
+            <span className="text-xs text-foreground">{name}</span>
+          </div>
+        ))}
+        <div className="flex items-center gap-1.5">
+          <div className={cn("w-3 h-3 rounded-sm", DEFAULT_EVENT_COLOR.bg)} />
+          <span className="text-xs text-muted-foreground">Outros</span>
+        </div>
+      </div>
       {loading && (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
