@@ -34,9 +34,10 @@ const OverdueAlerts = ({ onGoToKanban }: OverdueAlertsProps) => {
   const now = new Date();
   const overdueSales = sales.filter((s) => {
     if (s.status !== "Pendente") return false;
-    // Consider overdue 1 hour after the scheduled time (approximate meeting end)
-    const meetingEnd = new Date(new Date(s.date).getTime() + 60 * 60 * 1000);
-    if (meetingEnd >= now) return false;
+    // Show alert only from the day after the scheduled date
+    const saleDate = new Date(s.date);
+    const nextDay = new Date(saleDate.getFullYear(), saleDate.getMonth(), saleDate.getDate() + 1);
+    if (now < nextDay) return false;
     if (dismissed.has(s.id)) return false;
     if (role === "admin") return true;
     if (!collaboratorName) return false;
