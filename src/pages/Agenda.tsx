@@ -467,7 +467,7 @@ const Agenda = () => {
 
                     {dayEvents.map((ev) => {
                       const pos = getEventPosition(ev);
-                      const color = getEventColor(ev.summary);
+                      const color = getEventColor(ev);
                       return (
                         <button
                           key={ev.id}
