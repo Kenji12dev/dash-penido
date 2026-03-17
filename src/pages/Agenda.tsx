@@ -39,23 +39,33 @@ const START_HOUR = 7;
 const END_HOUR = 24;
 const HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
 
-const EVENT_COLORS = [
-  { bg: "bg-sky-500/80", border: "border-sky-400", text: "text-white" },
-  { bg: "bg-rose-500/70", border: "border-rose-400", text: "text-white" },
-  { bg: "bg-violet-500/70", border: "border-violet-400", text: "text-white" },
-  { bg: "bg-emerald-500/70", border: "border-emerald-400", text: "text-white" },
-  { bg: "bg-amber-500/70", border: "border-amber-400", text: "text-white" },
-  { bg: "bg-cyan-500/70", border: "border-cyan-400", text: "text-white" },
-  { bg: "bg-pink-500/70", border: "border-pink-400", text: "text-white" },
-  { bg: "bg-indigo-500/70", border: "border-indigo-400", text: "text-white" },
-];
+// Fixed SDR color map for consistency across all closers' calendars
+const SDR_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+  "Kaique": { bg: "bg-sky-500/80", border: "border-sky-400", text: "text-white" },
+  "Harumi": { bg: "bg-rose-500/70", border: "border-rose-400", text: "text-white" },
+  "José": { bg: "bg-emerald-500/70", border: "border-emerald-400", text: "text-white" },
+};
 
-function getEventColor(summary: string) {
-  let hash = 0;
-  for (let i = 0; i < summary.length; i++) {
-    hash = summary.charCodeAt(i) + ((hash << 5) - hash);
+const DEFAULT_EVENT_COLOR = { bg: "bg-zinc-500/60", border: "border-zinc-400", text: "text-white" };
+
+function extractSdrFromDescription(description: string): string | null {
+  const match = description.match(/SDR:\s*(.+)/i);
+  return match ? match[1].trim() : null;
+}
+
+function getEventColor(event: CalendarEvent) {
+  const sdr = extractSdrFromDescription(event.description);
+  if (sdr && SDR_COLORS[sdr]) return SDR_COLORS[sdr];
+  // Fallback: hash by summary for non-system events
+  if (sdr) {
+    let hash = 0;
+    for (let i = 0; i < sdr.length; i++) {
+      hash = sdr.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const colors = Object.values(SDR_COLORS);
+    return colors.length > 0 ? colors[Math.abs(hash) % colors.length] : DEFAULT_EVENT_COLOR;
   }
-  return EVENT_COLORS[Math.abs(hash) % EVENT_COLORS.length];
+  return DEFAULT_EVENT_COLOR;
 }
 
 function getEventPosition(event: CalendarEvent) {
