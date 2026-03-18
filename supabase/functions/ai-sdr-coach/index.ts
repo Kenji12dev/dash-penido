@@ -95,22 +95,28 @@ serve(async (req) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
       return new Response(
-        JSON.stringify({ error: "LOVABLE_API_KEY não configurada" }),
+        JSON.stringify({ error: "ANTHROPIC_API_KEY não configurada" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Build message content with images
+    // Build message content with images for Claude vision API
     const userContent: any[] = [];
 
     for (const img of images) {
+      const base64Data = img.startsWith("data:")
+        ? img.split(",")[1]
+        : img;
+      const mediaType = img.startsWith("data:image/png") ? "image/png" : "image/jpeg";
       userContent.push({
-        type: "image_url",
-        image_url: {
-          url: img.startsWith("data:") ? img : `data:image/jpeg;base64,${img}`,
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: mediaType,
+          data: base64Data,
         },
       });
     }
@@ -119,17 +125,19 @@ serve(async (req) => {
     userContent.push({ type: "text", text: contextMsg });
 
     const aiResponse = await fetch(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
+      "https://api.anthropic.com/v1/messages",
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-pro",
+          model: "claude-opus-4-5-20250514",
+          max_tokens: 4096,
+          system: SYSTEM_PROMPT,
           messages: [
-            { role: "system", content: SYSTEM_PROMPT },
             { role: "user", content: userContent },
           ],
         }),
@@ -143,14 +151,8 @@ serve(async (req) => {
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (aiResponse.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Créditos insuficientes. Adicione créditos ao workspace." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
       const errText = await aiResponse.text();
-      console.error("AI gateway error:", aiResponse.status, errText);
+      console.error("Claude API error:", aiResponse.status, errText);
       return new Response(
         JSON.stringify({ error: "Erro ao processar análise" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -158,7 +160,7 @@ serve(async (req) => {
     }
 
     const aiData = await aiResponse.json();
-    const analysis = aiData.choices?.[0]?.message?.content || "Não foi possível gerar a análise.";
+    const analysis = aiData.content?.[0]?.text || "Não foi possível gerar a análise.";
 
     // Extract classification
     const classMatch = analysis.match(/CLASSIFICAÇÃO:\s*(Quente|Morno|Frio)/i);
