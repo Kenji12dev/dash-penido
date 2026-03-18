@@ -50,7 +50,41 @@ const AIAnalysis = () => {
 
   useEffect(() => {
     loadHistory();
+    loadChatMessages();
   }, []);
+
+  const loadChatMessages = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("sdr_chat_messages")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true });
+    if (data) {
+      setMessages(
+        data.map((m: any) => ({
+          id: m.id,
+          type: m.type as "user" | "assistant",
+          content: m.content,
+          images: m.images || [],
+          classification: m.classification || undefined,
+          timestamp: new Date(m.created_at),
+        }))
+      );
+    }
+  };
+
+  const saveChatMessage = async (msg: AnalysisMessage) => {
+    if (!user) return;
+    await supabase.from("sdr_chat_messages").insert({
+      id: msg.id,
+      user_id: user.id,
+      type: msg.type,
+      content: msg.content,
+      images: msg.images || [],
+      classification: msg.classification || null,
+    });
+  };
 
   const loadHistory = async () => {
     const { data } = await supabase
@@ -108,6 +142,7 @@ const AIAnalysis = () => {
     };
 
     setMessages((prev) => [...prev, userMsg]);
+    saveChatMessage(userMsg);
     setLoading(true);
 
     try {
@@ -154,6 +189,7 @@ const AIAnalysis = () => {
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
+      saveChatMessage(assistantMsg);
       loadHistory();
     } catch (err: any) {
       console.error("Analysis error:", err);
@@ -188,13 +224,29 @@ const AIAnalysis = () => {
               Envie prints de abordagens no Instagram para receber coaching em tempo real
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowHistory(!showHistory)}
-          >
-            {showHistory ? "Chat" : "Histórico"}
-          </Button>
+          <div className="flex gap-2">
+            {!showHistory && messages.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  if (!user) return;
+                  await supabase.from("sdr_chat_messages").delete().eq("user_id", user.id);
+                  setMessages([]);
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                Limpar
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowHistory(!showHistory)}
+            >
+              {showHistory ? "Chat" : "Histórico"}
+            </Button>
+          </div>
         </div>
 
         {showHistory ? (
