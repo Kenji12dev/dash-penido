@@ -14,6 +14,17 @@ interface AppNavProps {
 const AppNav = ({ activeTab, onTabChange }: AppNavProps) => {
   const { role, signOut, user } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collaboratorType, setCollaboratorType] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("collaborators")
+      .select("type")
+      .eq("user_id", user.id)
+      .single()
+      .then(({ data }) => setCollaboratorType(data?.type || null));
+  }, [user]);
 
   const tabs = [
     { id: "dashboard", label: "Dashboard", icon: BarChart3 },
