@@ -281,6 +281,36 @@ export type Database = {
           },
         ]
       }
+      sdr_chat_messages: {
+        Row: {
+          classification: string | null
+          content: string
+          created_at: string
+          id: string
+          images: string[] | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          classification?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          images?: string[] | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          classification?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          images?: string[] | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       sdr_daily_metrics: {
         Row: {
           calls_scheduled: number
