@@ -701,7 +701,7 @@ const PreSales = () => {
       )}
 
       {/* Daily History Table */}
-      {(isSDR || role === "admin") && (
+      {(isSDR || role === "admin" || role === "visualizador") && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Histórico de Registros Diários</CardTitle>

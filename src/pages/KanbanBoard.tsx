@@ -799,21 +799,23 @@ const KanbanBoard = () => {
                   />
                 </div>
 
-                <div className="flex gap-2">
-                  <Button onClick={saveDetail} className="flex-1 font-semibold">
-                    <Save className="h-4 w-4 mr-1" /> Salvar Alterações
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeleteId(detailSale.id);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                {!isViewer && (
+                  <div className="flex gap-2">
+                    <Button onClick={saveDetail} className="flex-1 font-semibold">
+                      <Save className="h-4 w-4 mr-1" /> Salvar Alterações
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteId(detailSale.id);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </>
           )}
