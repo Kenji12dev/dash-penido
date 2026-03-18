@@ -50,6 +50,7 @@ const AIAnalysis = () => {
 
   useEffect(() => {
     loadHistory();
+    loadChatMessages();
   }, []);
 
   const loadHistory = async () => {
