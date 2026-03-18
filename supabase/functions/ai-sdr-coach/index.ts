@@ -27,7 +27,6 @@ serve(async (req) => {
     console.log("Auth header present:", !!authHeader);
 
     if (!authHeader) {
-      console.error("Missing Authorization header");
       return new Response(JSON.stringify({ error: "Não autorizado" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -47,34 +46,27 @@ serve(async (req) => {
       error: userError,
     } = await supabase.auth.getUser(token);
 
-    console.log("getUser result - user:", user?.id, "error:", userError?.message);
-
     if (userError || !user) {
-      console.error("Auth validation failed:", userError?.message || "No user returned");
+      console.error("Auth failed:", userError?.message);
       return new Response(JSON.stringify({ error: "Não autorizado" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Get collaborator info
-    const { data: collaborator, error: collabError } = await supabase
+    const { data: collaborator } = await supabase
       .from("collaborators")
       .select("id, name, type")
       .eq("user_id", user.id)
       .single();
 
-    console.log("Collaborator lookup - found:", !!collaborator, "error:", collabError?.message);
-
     if (!collaborator) {
-      console.error("Collaborator not found for user:", user.id);
       return new Response(
         JSON.stringify({ error: "Colaborador não encontrado" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Check role
     const { data: roleData } = await supabase
       .from("user_roles")
       .select("role")
@@ -84,10 +76,7 @@ serve(async (req) => {
     const isAdmin = roleData?.role === "admin";
     const isSdr = collaborator.type === "sdr";
 
-    console.log("Access check - role:", roleData?.role, "type:", collaborator.type, "isAdmin:", isAdmin, "isSdr:", isSdr);
-
     if (!isAdmin && !isSdr) {
-      console.error("Access denied - not admin or sdr");
       return new Response(
         JSON.stringify({ error: "Acesso restrito a SDRs e admins" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -110,73 +99,59 @@ serve(async (req) => {
       );
     }
 
-    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
-    console.log("ANTHROPIC_API_KEY present:", !!ANTHROPIC_API_KEY);
-
-    if (!ANTHROPIC_API_KEY) {
-      console.error("ANTHROPIC_API_KEY not configured");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      console.error("LOVABLE_API_KEY not configured");
       return new Response(
-        JSON.stringify({ error: "ANTHROPIC_API_KEY não configurada" }),
+        JSON.stringify({ error: "LOVABLE_API_KEY não configurada" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Build message content with images for Claude vision API
+    // Build content array with images for Lovable AI (OpenAI-compatible format)
     const userContent: any[] = [];
 
     for (const img of images) {
-      const base64Data = img.startsWith("data:")
-        ? img.split(",")[1]
-        : img;
-      const mediaType = img.startsWith("data:image/png") ? "image/png" : "image/jpeg";
+      const imageUrl = img.startsWith("data:") ? img : `data:image/jpeg;base64,${img}`;
       userContent.push({
-        type: "image",
-        source: {
-          type: "base64",
-          media_type: mediaType,
-          data: base64Data,
-        },
+        type: "image_url",
+        image_url: { url: imageUrl },
       });
     }
 
     const contextMsg = `SDR: ${collaborator.name}\n${message ? `Contexto adicional do SDR: ${message}` : "Analise os prints acima."}`;
     userContent.push({ type: "text", text: contextMsg });
 
-    console.log("Calling Anthropic API with", images.length, "images");
+    console.log("Calling Lovable AI with", images.length, "images");
 
-    const aiResponse = await fetch(
-      "https://api.anthropic.com/v1/messages",
-      {
-        method: "POST",
-        headers: {
-          "x-api-key": ANTHROPIC_API_KEY,
-          "anthropic-version": "2023-06-01",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "claude-opus-4-5-20250514",
-          max_tokens: 4096,
-          system: SYSTEM_PROMPT,
-          messages: [
-            { role: "user", content: userContent },
-          ],
-        }),
-      }
-    );
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-pro",
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userContent },
+        ],
+        max_tokens: 4096,
+      }),
+    });
 
-    console.log("Anthropic API response status:", aiResponse.status);
+    console.log("Lovable AI response status:", aiResponse.status);
 
     if (!aiResponse.ok) {
       const errText = await aiResponse.text();
-      console.error("Claude API error:", aiResponse.status, errText);
+      console.error("Lovable AI error:", aiResponse.status, errText);
 
-      if (errText.includes("credit balance is too low") || errText.includes("insufficient_quota")) {
+      if (aiResponse.status === 402) {
         return new Response(
           JSON.stringify({ error: "credit_balance_low" }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-
       if (aiResponse.status === 429) {
         return new Response(
           JSON.stringify({ error: "rate_limit" }),
@@ -191,13 +166,13 @@ serve(async (req) => {
     }
 
     const aiData = await aiResponse.json();
-    const analysis = aiData.content?.[0]?.text || "Não foi possível gerar a análise.";
+    const analysis = aiData.choices?.[0]?.message?.content || "Não foi possível gerar a análise.";
 
     // Extract classification
     const classMatch = analysis.match(/CLASSIFICAÇÃO:\s*(Quente|Morno|Frio)/i);
     const classification = classMatch ? classMatch[1] : "Morno";
 
-    // Save to database using service role for insert
+    // Save to database
     const serviceClient = createClient(
       supabaseUrl,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
