@@ -2,6 +2,7 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useSales, Sale } from "@/context/SalesContext";
+import { useAuth } from "@/context/AuthContext";
 import { PAYMENT_METHODS, LEAD_SOURCES, calculateNetValue, getFeeDescription } from "@/data/mockData";
 import { Database, Search, Trash2, Pencil, X, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -38,14 +39,22 @@ const statuses = ["Pago", "Pendente", "Follow Up", "Loss", "Reembolsado"];
 
 const SalesDatabase = () => {
   const { sales, deleteSale, updateSale, products, closers, sdrs } = useSales();
+  const { role } = useAuth();
+  const isViewer = role === "visualizador";
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [sdrFilter, setSdrFilter] = useState("all");
+  const [closerFilter, setCloserFilter] = useState("all");
+  const [paymentFilter, setPaymentFilter] = useState("all");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<Sale>>({});
 
   // Reset page when filters change
   const handleSearch = (v: string) => { setSearch(v); setCurrentPage(1); };
   const handleStatusFilter = (v: string) => { setStatusFilter(v); setCurrentPage(1); };
+  const handleSdrFilter = (v: string) => { setSdrFilter(v); setCurrentPage(1); };
+  const handleCloserFilter = (v: string) => { setCloserFilter(v); setCurrentPage(1); };
+  const handlePaymentFilter = (v: string) => { setPaymentFilter(v); setCurrentPage(1); };
 
   const ITEMS_PER_PAGE = 20;
   const [currentPage, setCurrentPage] = useState(1);
@@ -54,12 +63,12 @@ const SalesDatabase = () => {
     .filter((s) => {
       const matchesSearch =
         !search ||
-        s.clientName.toLowerCase().includes(search.toLowerCase()) ||
-        s.product.toLowerCase().includes(search.toLowerCase()) ||
-        s.closer.toLowerCase().includes(search.toLowerCase()) ||
-        s.sdr.toLowerCase().includes(search.toLowerCase());
+        s.clientName.toLowerCase().includes(search.toLowerCase());
       const matchesStatus = statusFilter === "all" || s.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesSdr = sdrFilter === "all" || s.sdr === sdrFilter;
+      const matchesCloser = closerFilter === "all" || s.closer === closerFilter;
+      const matchesPayment = paymentFilter === "all" || s.paymentMethod === paymentFilter;
+      return matchesSearch && matchesStatus && matchesSdr && matchesCloser && matchesPayment;
     })
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -111,23 +120,50 @@ const SalesDatabase = () => {
               {filtered.length}
             </span>
           </div>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 flex-wrap">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar..."
+                placeholder="Buscar lead..."
                 value={search}
                 onChange={(e) => handleSearch(e.target.value)}
-                className="pl-9 bg-secondary border-border w-full sm:w-64"
+                className="pl-9 bg-secondary border-border w-full sm:w-56"
                 maxLength={100}
               />
             </div>
-            <Select value={statusFilter} onValueChange={handleStatusFilter}>
+            <Select value={sdrFilter} onValueChange={handleSdrFilter}>
+              <SelectTrigger className="bg-secondary border-border w-full sm:w-36">
+                <SelectValue placeholder="SDR" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover border-border z-50">
+                <SelectItem value="all">Todos SDRs</SelectItem>
+                {sdrs.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={closerFilter} onValueChange={handleCloserFilter}>
+              <SelectTrigger className="bg-secondary border-border w-full sm:w-36">
+                <SelectValue placeholder="Closer" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover border-border z-50">
+                <SelectItem value="all">Todos Closers</SelectItem>
+                {closers.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={paymentFilter} onValueChange={handlePaymentFilter}>
               <SelectTrigger className="bg-secondary border-border w-full sm:w-40">
+                <SelectValue placeholder="Pagamento" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover border-border z-50">
+                <SelectItem value="all">Todos Pagamentos</SelectItem>
+                {PAYMENT_METHODS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={handleStatusFilter}>
+              <SelectTrigger className="bg-secondary border-border w-full sm:w-36">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent className="bg-popover border-border z-50">
-                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="all">Todos Status</SelectItem>
                 <SelectItem value="Pago">Pago</SelectItem>
                 <SelectItem value="Pendente">Pendente</SelectItem>
                 <SelectItem value="Follow Up">Follow Up</SelectItem>
@@ -165,7 +201,7 @@ const SalesDatabase = () => {
                     <th className="text-left px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">SDR</th>
                     <th className="text-left px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Origem</th>
                     <th className="text-left px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
-                    <th className="px-5 py-3"></th>
+                    {!isViewer && <th className="px-5 py-3"></th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -277,6 +313,7 @@ const SalesDatabase = () => {
                           </span>
                         )}
                       </td>
+                      {!isViewer && (
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2">
                           {editingId === s.id ? (
@@ -321,6 +358,7 @@ const SalesDatabase = () => {
                           )}
                         </div>
                       </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
