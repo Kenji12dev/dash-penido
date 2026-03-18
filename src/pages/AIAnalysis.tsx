@@ -189,6 +189,7 @@ const AIAnalysis = () => {
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
+      saveChatMessage(assistantMsg);
       loadHistory();
     } catch (err: any) {
       console.error("Analysis error:", err);
