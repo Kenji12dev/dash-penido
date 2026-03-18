@@ -246,9 +246,11 @@ const AIAnalysis = () => {
                         ))}
                       </div>
                     )}
-                    <p className="text-sm text-foreground/90">{msg.content}</p>
+                    {msg.type === "user" && (
+                      <p className="text-sm text-foreground/90">{msg.content}</p>
+                    )}
                     {msg.type === "assistant" && (
-                      <div className="mt-3 space-y-3">
+                      <div className="space-y-3">
                         {msg.classification && (
                           <ClassificationBadge classification={msg.classification} />
                         )}
