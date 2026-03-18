@@ -413,8 +413,8 @@ const KanbanBoard = () => {
                   {items.map((sale) => (
                     <div
                       key={sale.id}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, sale.id)}
+                      draggable={!isViewer}
+                      onDragStart={(e) => !isViewer && handleDragStart(e, sale.id)}
                       onDragEnd={handleDragEnd}
                       onClick={() => openDetail(sale)}
                       className={cn(
