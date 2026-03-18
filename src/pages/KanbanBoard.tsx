@@ -2,6 +2,7 @@ import { useState } from "react";
 import { format, startOfDay, endOfDay, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useSales, Sale } from "@/context/SalesContext";
+import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Columns3, GripVertical, Plus, CalendarIcon, Save, X, ArrowRight, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -53,6 +54,8 @@ const statusColumns = [
 
 const KanbanBoard = () => {
   const { sales, addSale, updateSale, deleteSale, products, closers, sdrs } = useSales();
+  const { role } = useAuth();
+  const isViewer = role === "visualizador";
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverColId, setDragOverColId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState(() => startOfDay(new Date()));
@@ -369,10 +372,12 @@ const KanbanBoard = () => {
               {filteredSales.length} venda{filteredSales.length !== 1 && "s"}
             </span>
           </div>
-          <Button onClick={() => setAddOpen(true)} size="sm" className="font-semibold">
-            <Plus className="h-4 w-4 mr-1" />
-            Novo Agendamento
-          </Button>
+          {!isViewer && (
+            <Button onClick={() => setAddOpen(true)} size="sm" className="font-semibold">
+              <Plus className="h-4 w-4 mr-1" />
+              Novo Agendamento
+            </Button>
+          )}
         </div>
 
         <DateFilter
@@ -408,8 +413,8 @@ const KanbanBoard = () => {
                   {items.map((sale) => (
                     <div
                       key={sale.id}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, sale.id)}
+                      draggable={!isViewer}
+                      onDragStart={(e) => !isViewer && handleDragStart(e, sale.id)}
                       onDragEnd={handleDragEnd}
                       onClick={() => openDetail(sale)}
                       className={cn(
@@ -688,8 +693,8 @@ const KanbanBoard = () => {
           {detailSale && (
             <>
               <DialogHeader>
-                <DialogTitle>Editar Agendamento</DialogTitle>
-                <DialogDescription>Altere as informações do agendamento.</DialogDescription>
+                <DialogTitle>{isViewer ? "Detalhes do Agendamento" : "Editar Agendamento"}</DialogTitle>
+                {!isViewer && <DialogDescription>Altere as informações do agendamento.</DialogDescription>}
               </DialogHeader>
               <div className="space-y-4 mt-2">
                 <div className="space-y-1.5">
@@ -794,21 +799,23 @@ const KanbanBoard = () => {
                   />
                 </div>
 
-                <div className="flex gap-2">
-                  <Button onClick={saveDetail} className="flex-1 font-semibold">
-                    <Save className="h-4 w-4 mr-1" /> Salvar Alterações
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeleteId(detailSale.id);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                {!isViewer && (
+                  <div className="flex gap-2">
+                    <Button onClick={saveDetail} className="flex-1 font-semibold">
+                      <Save className="h-4 w-4 mr-1" /> Salvar Alterações
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteId(detailSale.id);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </>
           )}

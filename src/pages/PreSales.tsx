@@ -335,6 +335,16 @@ const PreSales = () => {
         </Card>
       )}
 
+      {!isSDR && role === "visualizador" && (
+        <Card>
+          <CardContent className="py-6">
+            <p className="text-muted-foreground text-sm">
+              Você está no modo visualização. Os dados abaixo são apenas leitura.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Monthly SDR Goals Card with daily pace */}
       {(() => {
         const month = filterStart.getMonth() + 1;
@@ -626,8 +636,8 @@ const PreSales = () => {
         </CardContent>
       </Card>
 
-      {/* SDR Daily Input */}
-      {isSDR && (
+      {/* SDR Daily Input - hidden for viewers */}
+      {isSDR && role !== "visualizador" && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -691,7 +701,7 @@ const PreSales = () => {
       )}
 
       {/* Daily History Table */}
-      {(isSDR || role === "admin") && (
+      {(isSDR || role === "admin" || role === "visualizador") && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Histórico de Registros Diários</CardTitle>
@@ -716,7 +726,7 @@ const PreSales = () => {
                       <TableHead className="text-center">Conversas</TableHead>
                       <TableHead className="text-center">Respostas</TableHead>
                       <TableHead className="text-center">Calls</TableHead>
-                      <TableHead className="text-center">Ações</TableHead>
+                      {role !== "visualizador" && <TableHead className="text-center">Ações</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -729,16 +739,18 @@ const PreSales = () => {
                         <TableCell className="text-center">{entry.conversations_started}</TableCell>
                         <TableCell className="text-center">{entry.first_replies}</TableCell>
                         <TableCell className="text-center">{entry.calls_scheduled}</TableCell>
-                        <TableCell className="text-center">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSelectedDate(entry.date)}
-                            className="text-muted-foreground hover:text-primary"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                        </TableCell>
+                        {role !== "visualizador" && (
+                          <TableCell className="text-center">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setSelectedDate(entry.date)}
+                              className="text-muted-foreground hover:text-primary"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))}
                   </TableBody>
