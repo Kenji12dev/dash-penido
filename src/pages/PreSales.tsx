@@ -636,8 +636,8 @@ const PreSales = () => {
         </CardContent>
       </Card>
 
-      {/* SDR Daily Input */}
-      {isSDR && (
+      {/* SDR Daily Input - hidden for viewers */}
+      {isSDR && role !== "visualizador" && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
