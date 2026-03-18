@@ -389,8 +389,8 @@ const Agenda = () => {
               return (
                 <div
                   key={day.toISOString()}
-                  className="text-center py-3 border-r border-border last:border-r-0 cursor-pointer hover:bg-secondary/30 transition-colors"
-                  onClick={() => handleNewEvent(day)}
+                  className={cn("text-center py-3 border-r border-border last:border-r-0 transition-colors", !isViewer && "cursor-pointer hover:bg-secondary/30")}
+                  onClick={() => !isViewer && handleNewEvent(day)}
                 >
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
                     {format(day, "EEE", { locale: ptBR })}
