@@ -224,13 +224,29 @@ const AIAnalysis = () => {
               Envie prints de abordagens no Instagram para receber coaching em tempo real
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowHistory(!showHistory)}
-          >
-            {showHistory ? "Chat" : "Histórico"}
-          </Button>
+          <div className="flex gap-2">
+            {!showHistory && messages.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  if (!user) return;
+                  await supabase.from("sdr_chat_messages").delete().eq("user_id", user.id);
+                  setMessages([]);
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                Limpar
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowHistory(!showHistory)}
+            >
+              {showHistory ? "Chat" : "Histórico"}
+            </Button>
+          </div>
         </div>
 
         {showHistory ? (
