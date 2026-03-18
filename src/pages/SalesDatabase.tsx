@@ -120,23 +120,50 @@ const SalesDatabase = () => {
               {filtered.length}
             </span>
           </div>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 flex-wrap">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar..."
+                placeholder="Buscar lead..."
                 value={search}
                 onChange={(e) => handleSearch(e.target.value)}
-                className="pl-9 bg-secondary border-border w-full sm:w-64"
+                className="pl-9 bg-secondary border-border w-full sm:w-56"
                 maxLength={100}
               />
             </div>
-            <Select value={statusFilter} onValueChange={handleStatusFilter}>
+            <Select value={sdrFilter} onValueChange={handleSdrFilter}>
+              <SelectTrigger className="bg-secondary border-border w-full sm:w-36">
+                <SelectValue placeholder="SDR" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover border-border z-50">
+                <SelectItem value="all">Todos SDRs</SelectItem>
+                {sdrs.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={closerFilter} onValueChange={handleCloserFilter}>
+              <SelectTrigger className="bg-secondary border-border w-full sm:w-36">
+                <SelectValue placeholder="Closer" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover border-border z-50">
+                <SelectItem value="all">Todos Closers</SelectItem>
+                {closers.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={paymentFilter} onValueChange={handlePaymentFilter}>
               <SelectTrigger className="bg-secondary border-border w-full sm:w-40">
+                <SelectValue placeholder="Pagamento" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover border-border z-50">
+                <SelectItem value="all">Todos Pagamentos</SelectItem>
+                {PAYMENT_METHODS.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={handleStatusFilter}>
+              <SelectTrigger className="bg-secondary border-border w-full sm:w-36">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent className="bg-popover border-border z-50">
-                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="all">Todos Status</SelectItem>
                 <SelectItem value="Pago">Pago</SelectItem>
                 <SelectItem value="Pendente">Pendente</SelectItem>
                 <SelectItem value="Follow Up">Follow Up</SelectItem>
