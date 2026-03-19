@@ -402,6 +402,53 @@ export type Database = {
           },
         ]
       }
+      sdr_leads: {
+        Row: {
+          classificacao: Database["public"]["Enums"]["lead_classification"]
+          created_at: string
+          follow_up_date: string | null
+          id: string
+          instagram: string
+          nome: string
+          observacoes: string | null
+          sdr_id: string
+          status: Database["public"]["Enums"]["lead_status"]
+          updated_at: string
+        }
+        Insert: {
+          classificacao?: Database["public"]["Enums"]["lead_classification"]
+          created_at?: string
+          follow_up_date?: string | null
+          id?: string
+          instagram?: string
+          nome: string
+          observacoes?: string | null
+          sdr_id: string
+          status?: Database["public"]["Enums"]["lead_status"]
+          updated_at?: string
+        }
+        Update: {
+          classificacao?: Database["public"]["Enums"]["lead_classification"]
+          created_at?: string
+          follow_up_date?: string | null
+          id?: string
+          instagram?: string
+          nome?: string
+          observacoes?: string | null
+          sdr_id?: string
+          status?: Database["public"]["Enums"]["lead_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sdr_leads_sdr_id_fkey"
+            columns: ["sdr_id"]
+            isOneToOne: false
+            referencedRelation: "collaborators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -435,6 +482,14 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "colaborador" | "visualizador"
+      lead_classification: "Quente" | "Morno" | "Frio"
+      lead_status:
+        | "Novo"
+        | "Em contato"
+        | "Qualificado"
+        | "Agendado"
+        | "No-show"
+        | "Descartado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -563,6 +618,15 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "colaborador", "visualizador"],
+      lead_classification: ["Quente", "Morno", "Frio"],
+      lead_status: [
+        "Novo",
+        "Em contato",
+        "Qualificado",
+        "Agendado",
+        "No-show",
+        "Descartado",
+      ],
     },
   },
 } as const
