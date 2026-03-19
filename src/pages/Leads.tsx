@@ -15,7 +15,7 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-const STATUSES = ["Abordado", "1 mensagem", "Agendado", "Descartado"] as const;
+const STATUSES = ["Abordado", "1º Mensagem", "Agendado", "Descartado"] as const;
 const CLASSIFICATIONS = ["Quente", "Morno", "Frio"] as const;
 
 type LeadStatus = typeof STATUSES[number];
@@ -36,7 +36,7 @@ interface Lead {
 
 const statusColumns: { id: LeadStatus; label: string; color: string }[] = [
   { id: "Abordado", label: "Abordado", color: "border-gray-500/60 bg-gray-500/5" },
-  { id: "1 mensagem", label: "1 mensagem", color: "border-blue-500/60 bg-blue-500/5" },
+  { id: "1º Mensagem", label: "1º Mensagem", color: "border-blue-500/60 bg-blue-500/5" },
   { id: "Agendado", label: "Agendado", color: "border-emerald-500/60 bg-emerald-500/5" },
   { id: "Descartado", label: "Descartado", color: "border-red-500/60 bg-red-500/5" },
 ];
