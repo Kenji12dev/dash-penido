@@ -67,6 +67,8 @@ const Leads = () => {
 
   const [filterClass, setFilterClass] = useState<string>("all");
   const [filterSdr, setFilterSdr] = useState<string>("all");
+  const [startDate, setStartDate] = useState<Date>(startOfMonth(new Date()));
+  const [endDate, setEndDate] = useState<Date>(endOfDay(new Date()));
 
   const [newDialogOpen, setNewDialogOpen] = useState(false);
   const [newLead, setNewLead] = useState(emptyLead);
