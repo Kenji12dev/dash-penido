@@ -66,12 +66,12 @@ const AppNav = ({ activeTab, onTabChange, overdueLeadsCount = 0 }: AppNavProps) 
 
         {/* Desktop nav */}
         <nav className="hidden lg:flex items-center gap-1">
-          {tabs.map(({ id, label, icon: Icon }) => (
+          {tabs.map(({ id, label, icon: Icon, badge }) => (
             <button
               key={id}
               onClick={() => onTabChange(id)}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                "relative flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
                 activeTab === id
                   ? "bg-primary/15 text-primary"
                   : "text-muted-foreground hover:text-foreground hover:bg-secondary"
@@ -79,6 +79,11 @@ const AppNav = ({ activeTab, onTabChange, overdueLeadsCount = 0 }: AppNavProps) 
             >
               <Icon className="h-4 w-4" />
               {label}
+              {badge != null && badge > 0 && (
+                <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full h-4 min-w-[16px] flex items-center justify-center px-1">
+                  {badge}
+                </span>
+              )}
             </button>
           ))}
           <div className="ml-3 pl-3 border-l border-border flex items-center gap-2">
