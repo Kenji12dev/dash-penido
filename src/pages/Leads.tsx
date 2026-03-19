@@ -15,7 +15,7 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-const STATUSES = ["Novo", "Em contato", "Qualificado", "Agendado", "No-show", "Descartado"] as const;
+const STATUSES = ["Abordado", "1 mensagem", "Agendado", "Descartado"] as const;
 const CLASSIFICATIONS = ["Quente", "Morno", "Frio"] as const;
 
 type LeadStatus = typeof STATUSES[number];
@@ -35,11 +35,9 @@ interface Lead {
 }
 
 const statusColumns: { id: LeadStatus; label: string; color: string }[] = [
-  { id: "Novo", label: "Novo", color: "border-gray-500/60 bg-gray-500/5" },
-  { id: "Em contato", label: "Em contato", color: "border-blue-500/60 bg-blue-500/5" },
-  { id: "Qualificado", label: "Qualificado", color: "border-purple-500/60 bg-purple-500/5" },
+  { id: "Abordado", label: "Abordado", color: "border-gray-500/60 bg-gray-500/5" },
+  { id: "1 mensagem", label: "1 mensagem", color: "border-blue-500/60 bg-blue-500/5" },
   { id: "Agendado", label: "Agendado", color: "border-emerald-500/60 bg-emerald-500/5" },
-  { id: "No-show", label: "No-show", color: "border-orange-500/60 bg-orange-500/5" },
   { id: "Descartado", label: "Descartado", color: "border-red-500/60 bg-red-500/5" },
 ];
 
@@ -52,7 +50,7 @@ const classColors: Record<LeadClassification, string> = {
 const emptyLead = {
   nome: "",
   instagram: "",
-  status: "Novo" as LeadStatus,
+  status: "Abordado" as LeadStatus,
   classificacao: "Morno" as LeadClassification,
   follow_up_date: "",
   observacoes: "",
@@ -65,19 +63,15 @@ const Leads = () => {
   const [myCollaboratorId, setMyCollaboratorId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Filters
   const [filterClass, setFilterClass] = useState<string>("all");
   const [filterSdr, setFilterSdr] = useState<string>("all");
 
-  // New lead dialog
   const [newDialogOpen, setNewDialogOpen] = useState(false);
   const [newLead, setNewLead] = useState(emptyLead);
 
-  // Edit sheet
   const [editLead, setEditLead] = useState<Lead | null>(null);
   const [editSheetOpen, setEditSheetOpen] = useState(false);
 
-  // Drag state
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverColId, setDragOverColId] = useState<string | null>(null);
 
@@ -125,7 +119,6 @@ const Leads = () => {
 
   const getColumnLeads = (status: LeadStatus) => {
     const col = filteredLeads.filter((l) => l.status === status);
-    // Sort overdue first
     return col.sort((a, b) => {
       const aOver = isOverdue(a) ? 0 : 1;
       const bOver = isOverdue(b) ? 0 : 1;
@@ -166,12 +159,9 @@ const Leads = () => {
     if (!draggedId) return;
     const lead = leads.find((l) => l.id === draggedId);
     if (!lead || lead.status === targetStatus) { setDraggedId(null); setDragOverColId(null); return; }
-
-    // Optimistic update
     setLeads((prev) => prev.map((l) => l.id === draggedId ? { ...l, status: targetStatus } : l));
     setDraggedId(null);
     setDragOverColId(null);
-
     const { error } = await supabase
       .from("sdr_leads")
       .update({ status: targetStatus, updated_at: new Date().toISOString() } as any)
@@ -183,7 +173,6 @@ const Leads = () => {
 
   return (
     <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 py-6 space-y-5">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Leads</h1>
@@ -231,7 +220,6 @@ const Leads = () => {
         </Dialog>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <Select value={filterClass} onValueChange={setFilterClass}>
           <SelectTrigger className="w-[160px]"><SelectValue placeholder="Classificação" /></SelectTrigger>
@@ -251,11 +239,10 @@ const Leads = () => {
         )}
       </div>
 
-      {/* Kanban Board */}
       {loading ? (
         <p className="text-muted-foreground text-center py-12">Carregando...</p>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {statusColumns.map((col) => {
             const colLeads = getColumnLeads(col.id);
             return (
@@ -294,16 +281,12 @@ const Leads = () => {
                           <GripVertical className="h-4 w-4 text-muted-foreground/40 mt-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-foreground truncate">{lead.nome}</p>
-                            {lead.instagram && (
-                              <p className="text-xs text-muted-foreground truncate">{lead.instagram}</p>
-                            )}
+                            {lead.instagram && <p className="text-xs text-muted-foreground truncate">{lead.instagram}</p>}
                             <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                               <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0", classColors[lead.classificacao])}>
                                 {lead.classificacao}
                               </Badge>
-                              {isAdmin && (
-                                <span className="text-[10px] text-muted-foreground truncate">{getSdrName(lead.sdr_id)}</span>
-                              )}
+                              {isAdmin && <span className="text-[10px] text-muted-foreground truncate">{getSdrName(lead.sdr_id)}</span>}
                             </div>
                             {overdue && (
                               <div className="flex items-center gap-1 mt-1.5">
@@ -328,7 +311,6 @@ const Leads = () => {
         </div>
       )}
 
-      {/* Edit Sheet */}
       <Sheet open={editSheetOpen} onOpenChange={setEditSheetOpen}>
         <SheetContent className="w-[380px] sm:w-[420px] overflow-y-auto">
           <SheetHeader><SheetTitle>Editar Lead</SheetTitle></SheetHeader>

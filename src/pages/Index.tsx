@@ -39,7 +39,7 @@ const Index = () => {
 
       const now = new Date();
       const count = leads.filter((l: any) => {
-        if (["Agendado", "Descartado"].includes(l.status)) return false;
+      if (["Agendado", "Descartado"].includes(l.status)) return false;
         if (new Date(l.follow_up_date) >= now) return false;
         if (role !== "admin" && l.sdr_id !== collab?.id) return false;
         return true;
