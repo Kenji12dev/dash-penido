@@ -229,7 +229,7 @@ const Leads = () => {
         </Dialog>
       </div>
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap items-end gap-3">
         <Select value={filterClass} onValueChange={setFilterClass}>
           <SelectTrigger className="w-[160px]"><SelectValue placeholder="Classificação" /></SelectTrigger>
           <SelectContent>
@@ -246,6 +246,9 @@ const Leads = () => {
             </SelectContent>
           </Select>
         )}
+        <div className="flex-1">
+          <DateFilter startDate={startDate} endDate={endDate} onStartDateChange={setStartDate} onEndDateChange={setEndDate} />
+        </div>
       </div>
 
       {loading ? (
