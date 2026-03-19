@@ -129,7 +129,7 @@ const Leads = () => {
   };
 
   const handleCreate = async () => {
-    const sdrId = isAdmin && filterSdr !== "all" ? filterSdr : myCollaboratorId;
+    const sdrId = isAdmin ? (newLeadSdrId || myCollaboratorId) : myCollaboratorId;
     if (!sdrId) { toast.error("Você precisa estar vinculado a um colaborador."); return; }
     if (!newLead.nome.trim()) { toast.error("Nome do lead é obrigatório."); return; }
     const { error } = await supabase.from("sdr_leads").insert({
