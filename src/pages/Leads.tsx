@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import DateFilter from "@/components/dashboard/DateFilter";
 
 const STATUSES = ["Abordado", "1º Mensagem", "Agendado", "Descartado"] as const;
 const CLASSIFICATIONS = ["Quente", "Morno", "Frio"] as const;
