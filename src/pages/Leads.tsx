@@ -209,7 +209,7 @@ const Leads = () => {
               {isAdmin && (
                 <div>
                   <Label>SDR responsável</Label>
-                  <Select value={filterSdr !== "all" ? filterSdr : myCollaboratorId || ""} onValueChange={(v) => setFilterSdr(v)}>
+                  <Select value={newLeadSdrId || myCollaboratorId || ""} onValueChange={(v) => setNewLeadSdrId(v)}>
                     <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                     <SelectContent>{collaborators.filter((c) => c.id).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                   </Select>
