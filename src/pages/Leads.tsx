@@ -119,6 +119,10 @@ const Leads = () => {
     let result = leads;
     if (filterClass !== "all") result = result.filter((l) => l.classificacao === filterClass);
     if (isAdmin && filterSdr !== "all") result = result.filter((l) => l.sdr_id === filterSdr);
+    result = result.filter((l) => {
+      const d = new Date(l.created_at);
+      return d >= startDate && d <= endDate;
+    });
     return result;
   }, [leads, filterClass, filterSdr, isAdmin]);
 
