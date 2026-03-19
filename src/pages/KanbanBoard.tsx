@@ -4,7 +4,7 @@ import { ptBR } from "date-fns/locale";
 import { useSales, Sale } from "@/context/SalesContext";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Columns3, GripVertical, Plus, CalendarIcon, Save, X, ArrowRight, Trash2 } from "lucide-react";
+import { Columns3, GripVertical, Plus, CalendarIcon, Save, X, ArrowRight, Trash2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import DateFilter from "@/components/dashboard/DateFilter";
