@@ -7,7 +7,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SYSTEM_PROMPT = `Você é um coach especializado em Social Selling para SDRs do perfil Hey Investidor no Instagram. Seu trabalho é analisar prints de conversas enviados pelo SDR e fornecer um coaching direto, específico e acionável.
+const SYSTEM_PROMPT = `Você é um coach especializado em Social Selling para SDRs do perfil Hey Investidor no Instagram. Seu trabalho é analisar prints de conversas enviados pelo SDR e fornecer um coaching direto, específico e acionável. Você também pode responder perguntas sobre técnicas de Social Selling, abordagem, qualificação e agendamento de calls.
 
 CONTEXTO DA OPERAÇÃO:
 
@@ -22,6 +22,8 @@ Produto: mentoria/consultoria de negócios digitais
 Os SDRs operam dentro do perfil do Instagram do Hey Investidor — quando falam "meu vídeo" ou "nossa página", estão representando o Yan Pedro, não a si mesmos
 
 Meta dos SDRs: agendar calls para os closers. Não vender — apenas agendar.
+
+QUANDO O SDR ENVIAR PRINTS PARA ANÁLISE:
 
 ANTES DE ANALISAR — pergunte se necessário: Se o print não mostrar qual foi a interação que gerou a abordagem (comentário, enquete, story reply, novo seguidor, prospecção fria), pergunte ao SDR antes de dar a análise. A leitura do lead é um critério obrigatório de avaliação.
 
@@ -81,7 +83,7 @@ Mudar de assunto após o lead responder (quebra de contexto)
 
 Mensagens longas — transmitem apego à venda
 
-FORMATO OBRIGATÓRIO DA RESPOSTA:
+FORMATO OBRIGATÓRIO DA RESPOSTA (apenas quando analisando prints):
 
 O que foi bem
 
@@ -109,11 +111,15 @@ Próximo passo recomendado
 
 [Uma ação concreta e específica para o SDR fazer agora com esse lead.]
 
-REGRAS:
+QUANDO O SDR FIZER UMA PERGUNTA (sem prints):
+
+Responda de forma direta, prática e específica ao contexto de Social Selling para o perfil Hey Investidor. Use exemplos reais de mensagens quando possível. Não use o formato de análise — responda de forma conversacional e objetiva. Não inclua classificação (Quente/Morno/Frio) em respostas a perguntas.
+
+REGRAS GERAIS:
 
 Seja direto — nunca genérico
 
-Cite sempre as mensagens exatas ao apontar erros
+Cite sempre as mensagens exatas ao apontar erros (quando analisando prints)
 
 Não elogie por educação
 
@@ -125,7 +131,7 @@ Nunca mencione produto, preço ou tráfego nas reescritas sugeridas
 
 Responda sempre em português brasileiro
 
-Termine sua resposta com uma linha no formato exato:
+Quando analisando prints, termine sua resposta com uma linha no formato exato:
 CLASSIFICAÇÃO: [Quente|Morno|Frio]`;
 
 serve(async (req) => {
@@ -196,14 +202,17 @@ serve(async (req) => {
 
     const { images, message } = await req.json();
 
-    if (!images || !Array.isArray(images) || images.length === 0) {
+    const hasImages = images && Array.isArray(images) && images.length > 0;
+    const hasMessage = message && typeof message === "string" && message.trim().length > 0;
+
+    if (!hasImages && !hasMessage) {
       return new Response(
-        JSON.stringify({ error: "Envie pelo menos uma imagem" }),
+        JSON.stringify({ error: "Envie uma mensagem ou imagem" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (images.length > 5) {
+    if (hasImages && images.length > 5) {
       return new Response(
         JSON.stringify({ error: "Máximo de 5 imagens por vez" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -219,21 +228,25 @@ serve(async (req) => {
       );
     }
 
-    // Build content array with images for Lovable AI (OpenAI-compatible format)
+    // Build content array for Lovable AI
     const userContent: any[] = [];
 
-    for (const img of images) {
-      const imageUrl = img.startsWith("data:") ? img : `data:image/jpeg;base64,${img}`;
-      userContent.push({
-        type: "image_url",
-        image_url: { url: imageUrl },
-      });
+    if (hasImages) {
+      for (const img of images) {
+        const imageUrl = img.startsWith("data:") ? img : `data:image/jpeg;base64,${img}`;
+        userContent.push({
+          type: "image_url",
+          image_url: { url: imageUrl },
+        });
+      }
     }
 
-    const contextMsg = `SDR: ${collaborator.name}\n${message ? `Contexto adicional do SDR: ${message}` : "Analise os prints acima."}`;
+    const contextMsg = hasImages
+      ? `SDR: ${collaborator.name}\n${hasMessage ? `Contexto adicional do SDR: ${message}` : "Analise os prints acima."}`
+      : `SDR: ${collaborator.name}\nPergunta do SDR: ${message}`;
     userContent.push({ type: "text", text: contextMsg });
 
-    console.log("Calling Lovable AI with", images.length, "images");
+    console.log("Calling Lovable AI with", hasImages ? images.length : 0, "images");
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -279,9 +292,9 @@ serve(async (req) => {
     const aiData = await aiResponse.json();
     const analysis = aiData.choices?.[0]?.message?.content || "Não foi possível gerar a análise.";
 
-    // Extract classification
+    // Extract classification (only present when analyzing prints)
     const classMatch = analysis.match(/CLASSIFICAÇÃO:\s*(Quente|Morno|Frio)/i);
-    const classification = classMatch ? classMatch[1] : "Morno";
+    const classification = classMatch ? classMatch[1] : null;
 
     // Save to database
     const serviceClient = createClient(
@@ -292,15 +305,15 @@ serve(async (req) => {
     const { error: insertError } = await serviceClient.from("sdr_analyses").insert({
       sdr_id: collaborator.id,
       analysis,
-      classification,
-      images_count: images.length,
+      classification: classification || "Pergunta",
+      images_count: hasImages ? images.length : 0,
     });
 
     if (insertError) {
       console.error("DB insert error:", insertError.message);
     }
 
-    console.log("Analysis complete - classification:", classification);
+    console.log("Analysis complete - classification:", classification || "Pergunta");
 
     return new Response(
       JSON.stringify({ analysis, classification }),

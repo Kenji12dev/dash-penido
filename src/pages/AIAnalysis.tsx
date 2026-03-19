@@ -128,15 +128,15 @@ const AIAnalysis = () => {
   };
 
   const handleSend = async () => {
-    if (images.length === 0) {
-      toast.error("Envie pelo menos uma imagem para análise");
+    if (images.length === 0 && !input.trim()) {
+      toast.error("Envie uma mensagem ou imagem");
       return;
     }
 
     const userMsg: AnalysisMessage = {
       id: crypto.randomUUID(),
       type: "user",
-      content: input || "Analise estes prints de abordagem no Instagram",
+      content: input || (images.length > 0 ? "Analise estes prints de abordagem no Instagram" : ""),
       images: previews,
       timestamp: new Date(),
     };
@@ -147,7 +147,7 @@ const AIAnalysis = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke("ai-sdr-coach", {
-        body: { images, message: input },
+        body: { images: images.length > 0 ? images : [], message: input },
       });
 
       if (error) {
@@ -221,7 +221,7 @@ const AIAnalysis = () => {
           <div>
             <h1 className="text-2xl font-bold text-foreground">Análise IA</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Envie prints de abordagens no Instagram para receber coaching em tempo real
+              Envie prints ou faça perguntas sobre Social Selling para receber coaching em tempo real
             </p>
           </div>
           <div className="flex gap-2">
@@ -292,10 +292,10 @@ const AIAnalysis = () => {
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center space-y-3">
                     <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
-                      <ImagePlus className="h-8 w-8 text-primary" />
+                      <Send className="h-8 w-8 text-primary" />
                     </div>
                     <p className="text-muted-foreground text-sm max-w-xs">
-                      Envie prints de conversas do Instagram para receber uma análise detalhada da sua abordagem
+                      Envie prints de conversas ou faça perguntas sobre Social Selling para receber coaching em tempo real
                     </p>
                   </div>
                 </div>
@@ -347,7 +347,7 @@ const AIAnalysis = () => {
                   <Card className="p-4 bg-card border-border">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      <span className="text-sm">Analisando abordagem...</span>
+                      <span className="text-sm">Analisando...</span>
                     </div>
                   </Card>
                 </div>
@@ -399,7 +399,7 @@ const AIAnalysis = () => {
               <Textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Contexto adicional (opcional)..."
+                placeholder="Faça uma pergunta ou adicione contexto..."
                 className="min-h-[44px] max-h-32 resize-none"
                 rows={1}
                 onKeyDown={(e) => {
@@ -411,7 +411,7 @@ const AIAnalysis = () => {
               />
               <Button
                 onClick={handleSend}
-                disabled={loading || images.length === 0}
+                disabled={loading || (images.length === 0 && !input.trim())}
                 size="icon"
                 className="shrink-0"
               >
