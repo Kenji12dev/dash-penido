@@ -199,9 +199,6 @@ const AIAnalysis = () => {
       toast.error(err?.message || "Erro ao processar análise. Tente novamente em instantes.");
     } finally {
       setLoading(false);
-      setInput("");
-      setImages([]);
-      setPreviews([]);
     }
   };
 
