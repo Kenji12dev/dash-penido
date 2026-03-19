@@ -15,7 +15,7 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-const STATUSES = ["Abordado", "1 mensagem", "Agendado", "Descartado"] as const;
+const STATUSES = ["Abordado", "1º Mensagem", "Agendado", "Descartado"] as const;
 const CLASSIFICATIONS = ["Quente", "Morno", "Frio"] as const;
 
 type LeadStatus = typeof STATUSES[number];
