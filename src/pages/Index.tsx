@@ -24,7 +24,7 @@ const Index = () => {
       {activeTab === "database" && <SalesDatabase />}
       {activeTab === "pre-sales" && <PreSales />}
       {activeTab === "agenda" && <Agenda />}
-      {activeTab === "ai-analysis" && <AIAnalysis />}
+      {activeTab === "ai-analysis" && (role === "admin" || role === "colaborador") && <AIAnalysis />}
       {activeTab === "collaborators" && role === "admin" && <Collaborators />}
       {activeTab === "profile" && !isViewer && <Profile />}
     </div>
