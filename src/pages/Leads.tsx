@@ -68,6 +68,7 @@ const Leads = () => {
 
   const [newDialogOpen, setNewDialogOpen] = useState(false);
   const [newLead, setNewLead] = useState(emptyLead);
+  const [newLeadSdrId, setNewLeadSdrId] = useState<string>("");
 
   const [editLead, setEditLead] = useState<Lead | null>(null);
   const [editSheetOpen, setEditSheetOpen] = useState(false);
