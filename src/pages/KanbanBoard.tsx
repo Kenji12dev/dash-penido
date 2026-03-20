@@ -58,8 +58,6 @@ const KanbanBoard = () => {
   const isViewer = role === "visualizador";
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverColId, setDragOverColId] = useState<string | null>(null);
-  const [startDate, setStartDate] = useState(() => startOfDay(new Date()));
-  const [endDate, setEndDate] = useState(() => endOfDay(endOfMonth(new Date())));
 
   // Filters
   const [search, setSearch] = useState("");
