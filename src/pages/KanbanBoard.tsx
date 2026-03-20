@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Columns3, GripVertical, Plus, CalendarIcon, Save, X, ArrowRight, Trash2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import DateFilter from "@/components/dashboard/DateFilter";
+
 import { PAYMENT_METHODS, LEAD_SOURCES, calculateNetValue, getFeeDescription, HybridPayment, calculateHybridNetValue, calculateHybridCaixa } from "@/data/mockData";
 import {
   Dialog,
