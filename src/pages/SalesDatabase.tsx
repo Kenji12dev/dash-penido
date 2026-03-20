@@ -176,6 +176,7 @@ const SalesDatabase = () => {
                 <SelectItem value="Reembolsado">Reembolsado</SelectItem>
               </SelectContent>
             </Select>
+            <DateFilter startDate={startDate} endDate={endDate} onStartDateChange={setStartDate} onEndDateChange={setEndDate} />
           </div>
         </div>
 

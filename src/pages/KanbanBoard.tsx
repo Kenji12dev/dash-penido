@@ -436,6 +436,7 @@ const KanbanBoard = () => {
               ))}
             </SelectContent>
           </Select>
+          <DateFilter startDate={startDate} endDate={endDate} onStartDateChange={setStartDate} onEndDateChange={setEndDate} />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
