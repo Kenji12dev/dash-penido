@@ -54,63 +54,44 @@ const DateFilter = ({ startDate, endDate, onStartDateChange, onEndDateChange }: 
   };
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-      <div className="flex items-center gap-1.5 overflow-x-auto">
-        {quickFilters.map((filter) => (
-          <button
-            key={filter}
-            onClick={() => handleQuickFilter(filter)}
-            className={cn(
-              "px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap",
-              activeFilter === filter
-                ? "bg-primary/20 text-primary border border-primary/30"
-                : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-            )}
-          >
-            {quickLabels[filter]}
-          </button>
-        ))}
-      </div>
+    <div className="flex items-center gap-2">
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" className="gap-1.5 bg-secondary border-border text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3">
+            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+            {format(startDate, "dd/MM/yy", { locale: ptBR })}
+            <ChevronDown className="h-3 w-3 text-muted-foreground" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <CalendarComponent
+            mode="single"
+            selected={startDate}
+            onSelect={handleManualDate(onStartDateChange)}
+            className="p-3 pointer-events-auto"
+          />
+        </PopoverContent>
+      </Popover>
 
-      <div className="flex items-center gap-2 sm:ml-auto">
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" className="gap-1.5 bg-secondary border-border text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3">
-              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-              {format(startDate, "dd/MM/yy", { locale: ptBR })}
-              <ChevronDown className="h-3 w-3 text-muted-foreground" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <CalendarComponent
-              mode="single"
-              selected={startDate}
-              onSelect={handleManualDate(onStartDateChange)}
-              className="p-3 pointer-events-auto"
-            />
-          </PopoverContent>
-        </Popover>
+      <span className="text-muted-foreground text-xs">até</span>
 
-        <span className="text-muted-foreground text-xs">até</span>
-
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" className="gap-1.5 bg-secondary border-border text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3">
-              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-              {format(endDate, "dd/MM/yy", { locale: ptBR })}
-              <ChevronDown className="h-3 w-3 text-muted-foreground" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="end">
-            <CalendarComponent
-              mode="single"
-              selected={endDate}
-              onSelect={handleManualDate(onEndDateChange)}
-              className="p-3 pointer-events-auto"
-            />
-          </PopoverContent>
-        </Popover>
-      </div>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" className="gap-1.5 bg-secondary border-border text-xs sm:text-sm h-8 sm:h-9 px-2 sm:px-3">
+            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+            {format(endDate, "dd/MM/yy", { locale: ptBR })}
+            <ChevronDown className="h-3 w-3 text-muted-foreground" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="end">
+          <CalendarComponent
+            mode="single"
+            selected={endDate}
+            onSelect={handleManualDate(onEndDateChange)}
+            className="p-3 pointer-events-auto"
+          />
+        </PopoverContent>
+      </Popover>
     </div>
   );
 };
