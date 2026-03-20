@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { format } from "date-fns";
+import { format, startOfMonth, startOfDay, endOfDay } from "date-fns";
+import DateFilter from "@/components/dashboard/DateFilter";
 import { ptBR } from "date-fns/locale";
 import { useSales, Sale } from "@/context/SalesContext";
 import { useAuth } from "@/context/AuthContext";
@@ -46,6 +47,8 @@ const SalesDatabase = () => {
   const [sdrFilter, setSdrFilter] = useState("all");
   const [closerFilter, setCloserFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
+  const [startDate, setStartDate] = useState<Date>(startOfMonth(new Date()));
+  const [endDate, setEndDate] = useState<Date>(endOfDay(new Date()));
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<Sale>>({});
 
@@ -68,7 +71,9 @@ const SalesDatabase = () => {
       const matchesSdr = sdrFilter === "all" || s.sdr === sdrFilter;
       const matchesCloser = closerFilter === "all" || s.closer === closerFilter;
       const matchesPayment = paymentFilter === "all" || s.paymentMethod === paymentFilter;
-      return matchesSearch && matchesStatus && matchesSdr && matchesCloser && matchesPayment;
+      const saleDate = new Date(s.date);
+      const matchesDate = saleDate >= startOfDay(startDate) && saleDate <= endOfDay(endDate);
+      return matchesSearch && matchesStatus && matchesSdr && matchesCloser && matchesPayment && matchesDate;
     })
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -171,6 +176,7 @@ const SalesDatabase = () => {
                 <SelectItem value="Reembolsado">Reembolsado</SelectItem>
               </SelectContent>
             </Select>
+            <DateFilter startDate={startDate} endDate={endDate} onStartDateChange={setStartDate} onEndDateChange={setEndDate} />
           </div>
         </div>
 

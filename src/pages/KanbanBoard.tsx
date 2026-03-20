@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { format, startOfDay, endOfDay } from "date-fns";
+import { format, startOfDay, endOfDay, startOfMonth } from "date-fns";
+import DateFilter from "@/components/dashboard/DateFilter";
 import { ptBR } from "date-fns/locale";
 import { useSales, Sale } from "@/context/SalesContext";
 import { useAuth } from "@/context/AuthContext";
@@ -64,6 +65,8 @@ const KanbanBoard = () => {
   const [sdrFilter, setSdrFilter] = useState("all");
   const [closerFilter, setCloserFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
+  const [startDate, setStartDate] = useState<Date>(startOfMonth(new Date()));
+  const [endDate, setEndDate] = useState<Date>(endOfDay(new Date()));
 
   // Add dialog
   const [addOpen, setAddOpen] = useState(false);
@@ -113,7 +116,9 @@ const KanbanBoard = () => {
     const matchesSdr = sdrFilter === "all" || s.sdr === sdrFilter;
     const matchesCloser = closerFilter === "all" || s.closer === closerFilter;
     const matchesPayment = paymentFilter === "all" || s.paymentMethod === paymentFilter;
-    return matchesSearch && matchesSdr && matchesCloser && matchesPayment;
+    const saleDate = new Date(s.date);
+    const matchesDate = saleDate >= startOfDay(startDate) && saleDate <= endOfDay(endDate);
+    return matchesSearch && matchesSdr && matchesCloser && matchesPayment && matchesDate;
   });
 
   // Drag handlers
@@ -431,6 +436,7 @@ const KanbanBoard = () => {
               ))}
             </SelectContent>
           </Select>
+          <DateFilter startDate={startDate} endDate={endDate} onStartDateChange={setStartDate} onEndDateChange={setEndDate} />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
