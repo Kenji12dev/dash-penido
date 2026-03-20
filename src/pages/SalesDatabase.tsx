@@ -71,7 +71,9 @@ const SalesDatabase = () => {
       const matchesSdr = sdrFilter === "all" || s.sdr === sdrFilter;
       const matchesCloser = closerFilter === "all" || s.closer === closerFilter;
       const matchesPayment = paymentFilter === "all" || s.paymentMethod === paymentFilter;
-      return matchesSearch && matchesStatus && matchesSdr && matchesCloser && matchesPayment;
+      const saleDate = new Date(s.date);
+      const matchesDate = saleDate >= startOfDay(startDate) && saleDate <= endOfDay(endDate);
+      return matchesSearch && matchesStatus && matchesSdr && matchesCloser && matchesPayment && matchesDate;
     })
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
