@@ -9,7 +9,7 @@ import { Columns3, GripVertical, Plus, CalendarIcon, Save, X, ArrowRight, Trash2
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-import { PAYMENT_METHODS, LEAD_SOURCES, calculateNetValue, getFeeDescription, HybridPayment, calculateHybridNetValue, calculateHybridCaixa } from "@/data/mockData";
+import { PAYMENT_METHODS, LEAD_SOURCES, calculateNetValue, getFeeDescription, HybridPayment, calculateHybridNetValue, calculateHybridCaixa, STATUS_COLOR_MAP } from "@/data/mockData";
 import {
   Dialog,
   DialogContent,
