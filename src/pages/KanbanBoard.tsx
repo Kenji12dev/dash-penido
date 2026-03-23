@@ -47,9 +47,10 @@ import {
 
 const statusColumns = [
   { id: "Pendente", label: "Agendado / Pendente", color: "border-yellow-500/60 bg-yellow-500/5" },
-  { id: "Follow Up", label: "Follow Up", color: "border-blue-500/60 bg-blue-500/5" },
   { id: "Pago", label: "Pago", color: "border-emerald-500/60 bg-emerald-500/5" },
   { id: "Loss", label: "Loss", color: "border-red-500/60 bg-red-500/5" },
+  { id: "Follow Up", label: "Follow Up", color: "border-blue-500/60 bg-blue-500/5" },
+  { id: "No Show", label: "No Show", color: "border-orange-500/60 bg-orange-500/5" },
   { id: "Reembolsado", label: "Reembolsado", color: "border-zinc-500/60 bg-zinc-500/5" },
 ];
 
