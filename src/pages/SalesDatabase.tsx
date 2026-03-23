@@ -28,15 +28,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
-const statusColors: Record<string, string> = {
-  Pago: "text-success",
-  Pendente: "text-warning",
-  "Follow Up": "text-blue-500",
-  Loss: "text-destructive",
-  Reembolsado: "text-muted-foreground",
-};
+const statusColors: Record<string, string> = Object.fromEntries(
+  Object.entries(STATUS_COLOR_MAP).map(([k, v]) => [k, v.textClass])
+);
 
-const statuses = ["Pago", "Pendente", "Follow Up", "Loss", "Reembolsado"];
+const statuses = ["Pago", "Pendente", "Follow Up", "Loss", "No Show", "Reembolsado"];
 
 const SalesDatabase = () => {
   const { sales, deleteSale, updateSale, products, closers, sdrs } = useSales();

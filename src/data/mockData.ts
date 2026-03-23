@@ -128,6 +128,16 @@ export const LEAD_SOURCES = [
 
 export type LeadSource = (typeof LEAD_SOURCES)[number];
 
+// Unified status colors used across Kanban, Dashboard charts, and Sales Database
+export const STATUS_COLOR_MAP: Record<string, { hsl: string; textClass: string; borderBgClass: string }> = {
+  Pendente:    { hsl: "hsl(48, 96%, 53%)",   textClass: "text-yellow-500",  borderBgClass: "border-yellow-500/60 bg-yellow-500/5" },
+  Pago:        { hsl: "hsl(152, 69%, 41%)",  textClass: "text-emerald-500", borderBgClass: "border-emerald-500/60 bg-emerald-500/5" },
+  Loss:        { hsl: "hsl(0, 84%, 60%)",    textClass: "text-red-500",     borderBgClass: "border-red-500/60 bg-red-500/5" },
+  "Follow Up": { hsl: "hsl(217, 91%, 60%)",  textClass: "text-blue-500",    borderBgClass: "border-blue-500/60 bg-blue-500/5" },
+  "No Show":   { hsl: "hsl(25, 95%, 53%)",   textClass: "text-orange-500",  borderBgClass: "border-orange-500/60 bg-orange-500/5" },
+  Reembolsado: { hsl: "hsl(240, 5%, 65%)",   textClass: "text-zinc-400",    borderBgClass: "border-zinc-500/60 bg-zinc-500/5" },
+};
+
 export const LEAD_SOURCE_MAP: Record<string, { label: string; color: string }> = {
   "Formulário": { label: "Formulário", color: CHART_COLORS[0] },
   "Stories do IG": { label: "Stories do IG", color: CHART_COLORS[1] },

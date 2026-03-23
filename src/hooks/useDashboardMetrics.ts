@@ -26,13 +26,9 @@ export interface DashboardMetrics {
   closersList: string[];
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  Pago: CHART_COLORS[3],
-  Pendente: CHART_COLORS[5],
-  "Follow Up": CHART_COLORS[1],
-  Loss: CHART_COLORS[6],
-  Reembolsado: CHART_COLORS[8],
-};
+const STATUS_COLORS: Record<string, string> = Object.fromEntries(
+  Object.entries(STATUS_COLOR_MAP).map(([k, v]) => [k, v.hsl])
+);
 
 export const useDashboardMetrics = (
   startDate: Date,
