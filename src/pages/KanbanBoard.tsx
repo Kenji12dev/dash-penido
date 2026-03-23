@@ -137,9 +137,9 @@ const KanbanBoard = () => {
     if (!draggedId) return;
     const sale = sales.find((s) => s.id === draggedId);
     if (sale && sale.status !== targetStatus) {
-      if (targetStatus === "Loss") {
-        updateSale(draggedId, { status: "Loss" });
-        toast.success("Venda movida para Loss");
+      if (targetStatus === "Loss" || targetStatus === "No Show") {
+        updateSale(draggedId, { status: targetStatus });
+        toast.success(`Venda movida para ${targetStatus}`);
       } else if (targetStatus === "Follow Up") {
         setFollowUpDialog({ saleId: draggedId });
       } else {
