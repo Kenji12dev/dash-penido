@@ -462,6 +462,8 @@ const PreSales = () => {
                 <TableHead className="text-center">Pendentes</TableHead>
                 <TableHead className="text-center">Follow Up</TableHead>
                 <TableHead className="text-center">Loss</TableHead>
+                <TableHead className="text-center">No Show</TableHead>
+                <TableHead className="text-center">Reembolsado</TableHead>
                 <TableHead className="text-center">Taxa Conversão</TableHead>
               </TableRow>
             </TableHeader>
