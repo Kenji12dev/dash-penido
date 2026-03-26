@@ -9,7 +9,6 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 interface AppNavProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
-  overdueLeadsCount?: number;
 }
 
 const AppNav = ({ activeTab, onTabChange, overdueLeadsCount = 0 }: AppNavProps) => {
