@@ -112,7 +112,7 @@ const AppNav = ({ activeTab, onTabChange }: AppNavProps) => {
                 </div>
 
                 <nav className="flex-1 p-3 space-y-1">
-                  {tabs.map(({ id, label, icon: Icon, badge }) => (
+                  {tabs.map(({ id, label, icon: Icon }) => (
                     <button
                       key={id}
                       onClick={() => handleTabClick(id)}
