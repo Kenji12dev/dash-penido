@@ -245,9 +245,9 @@ const PreSales = () => {
   // Build comparison chart data
   const appointmentChartData = useMemo(() => {
     const sdrNames = collaborators.map((c) => c.name);
-    const sdrCounts: Record<string, { total: number; pago: number; pendente: number; followUp: number; loss: number }> = {};
+    const sdrCounts: Record<string, { total: number; pago: number; pendente: number; followUp: number; loss: number; noShow: number; reembolsado: number }> = {};
     sdrNames.forEach((name) => {
-      sdrCounts[name] = { total: 0, pago: 0, pendente: 0, followUp: 0, loss: 0 };
+      sdrCounts[name] = { total: 0, pago: 0, pendente: 0, followUp: 0, loss: 0, noShow: 0, reembolsado: 0 };
     });
     filteredSales.forEach((sale) => {
       if (sdrCounts[sale.sdr]) {
@@ -257,6 +257,8 @@ const PreSales = () => {
         else if (status === "pendente") sdrCounts[sale.sdr].pendente++;
         else if (status === "follow up") sdrCounts[sale.sdr].followUp++;
         else if (status === "loss") sdrCounts[sale.sdr].loss++;
+        else if (status === "no show") sdrCounts[sale.sdr].noShow++;
+        else if (status === "reembolsado") sdrCounts[sale.sdr].reembolsado++;
       }
     });
     return sdrNames.map((name) => ({
@@ -266,6 +268,8 @@ const PreSales = () => {
       Pendente: sdrCounts[name]?.pendente || 0,
       "Follow Up": sdrCounts[name]?.followUp || 0,
       Loss: sdrCounts[name]?.loss || 0,
+      "No Show": sdrCounts[name]?.noShow || 0,
+      Reembolsado: sdrCounts[name]?.reembolsado || 0,
     }));
   }, [filteredSales, collaborators]);
 
