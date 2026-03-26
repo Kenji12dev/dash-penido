@@ -74,11 +74,6 @@ const AppNav = ({ activeTab, onTabChange }: AppNavProps) => {
             >
               <Icon className="h-4 w-4" />
               {label}
-              {badge != null && badge > 0 && (
-                <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full h-4 min-w-[16px] flex items-center justify-center px-1">
-                  {badge}
-                </span>
-              )}
             </button>
           ))}
           <div className="ml-3 pl-3 border-l border-border flex items-center gap-2">
