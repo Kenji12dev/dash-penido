@@ -11,7 +11,7 @@ interface AppNavProps {
   onTabChange: (tab: string) => void;
 }
 
-const AppNav = ({ activeTab, onTabChange, overdueLeadsCount = 0 }: AppNavProps) => {
+const AppNav = ({ activeTab, onTabChange }: AppNavProps) => {
   const { role, signOut, user } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collaboratorType, setCollaboratorType] = useState<string | null>(null);
