@@ -486,6 +486,8 @@ const PreSales = () => {
                   const pendente = appointments?.Pendente || 0;
                   const followUp = appointments?.["Follow Up"] || 0;
                   const loss = appointments?.Loss || 0;
+                  const noShow = appointments?.["No Show"] || 0;
+                  const reembolsado = appointments?.Reembolsado || 0;
                   const replyRate = conversations > 0 ? ((replies / conversations) * 100).toFixed(1) : "—";
                   const scheduleRate = replies > 0 ? ((calls / replies) * 100).toFixed(1) : "—";
                   const conversionRate = total > 0 ? ((pago / total) * 100).toFixed(1) : "—";
@@ -511,6 +513,8 @@ const PreSales = () => {
                       <TableCell className="text-center text-yellow-500 font-medium">{pendente}</TableCell>
                       <TableCell className="text-center text-blue-500 font-medium">{followUp}</TableCell>
                       <TableCell className="text-center text-destructive font-medium">{loss}</TableCell>
+                      <TableCell className="text-center text-orange-500 font-medium">{noShow}</TableCell>
+                      <TableCell className="text-center text-zinc-400 font-medium">{reembolsado}</TableCell>
                       <TableCell className="text-center">
                         <span className={conversionRate !== "—" ? "text-primary font-semibold" : "text-muted-foreground"}>
                           {conversionRate !== "—" ? `${conversionRate}%` : "—"}
