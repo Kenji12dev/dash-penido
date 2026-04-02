@@ -81,13 +81,24 @@ export const useDashboardMetrics = (
     // KPIs only count "Pago" sales
     const filteredSales = applyFilters(dateFiltered).filter((s) => s.status === "Pago");
 
-    const faturamentoLiquido = filteredSales.reduce((sum, s) => sum + s.netValue, 0);
-    const caixaGerado = filteredSales.reduce((sum, s) => {
-      // Venda Híbrida: caixa = soma dos valores não-TMB
-      if (s.paymentMethod === "Venda Híbrida" && Array.isArray(s.hybridPayments)) {
-        return sum + calculateHybridCaixa(s.hybridPayments);
+    // Helper: for hybrid sales filtered by payment method, only count the matching portions
+    const getNetValueForSale = (s: typeof filteredSales[0]) => {
+      if (filters.paymentMethod && s.paymentMethod === "Venda Híbrida" && Array.isArray(s.hybridPayments)) {
+        return s.hybridPayments
+          .filter((hp: any) => hp.method === filters.paymentMethod)
+          .reduce((acc: number, hp: any) => acc + calculateNetValue(hp.value, hp.method), 0);
       }
-      // For TMB sales with a down payment, use down payment as cash generated
+      return s.netValue;
+    };
+
+    const faturamentoLiquido = filteredSales.reduce((sum, s) => sum + getNetValueForSale(s), 0);
+    const caixaGerado = filteredSales.reduce((sum, s) => {
+      if (s.paymentMethod === "Venda Híbrida" && Array.isArray(s.hybridPayments)) {
+        const payments = filters.paymentMethod
+          ? s.hybridPayments.filter((hp: any) => hp.method === filters.paymentMethod)
+          : s.hybridPayments;
+        return sum + calculateHybridCaixa(payments);
+      }
       if (s.paymentMethod === "TMB" && s.downPayment != null) {
         return sum + s.downPayment;
       }
