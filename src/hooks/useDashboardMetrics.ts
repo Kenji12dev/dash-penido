@@ -52,7 +52,14 @@ export const useDashboardMetrics = (
       list.filter((s) => {
         if (filters.closer && s.closer !== filters.closer) return false;
         if (filters.sdr && s.sdr !== filters.sdr) return false;
-        if (filters.paymentMethod && s.paymentMethod !== filters.paymentMethod) return false;
+        if (filters.paymentMethod) {
+          if (s.paymentMethod === "Venda Híbrida" && Array.isArray(s.hybridPayments)) {
+            const hasMethod = s.hybridPayments.some((hp: any) => hp.method === filters.paymentMethod);
+            if (!hasMethod) return false;
+          } else if (s.paymentMethod !== filters.paymentMethod) {
+            return false;
+          }
+        }
         if (filters.leadSource && s.leadSource !== filters.leadSource) return false;
         return true;
       });
