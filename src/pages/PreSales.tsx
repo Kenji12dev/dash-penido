@@ -242,6 +242,27 @@ const PreSales = () => {
     });
   }, [sales, filterStart, filterEnd]);
 
+  // SDR → Closer distribution
+  const sdrCloserDistribution = useMemo(() => {
+    const result: Record<string, { closer: string; count: number; percentage: number }[]> = {};
+    collaborators.forEach((c) => {
+      const sdrSales = filteredSales.filter((s) => s.sdr === c.name);
+      const closerMap = new Map<string, number>();
+      sdrSales.forEach((s) => {
+        closerMap.set(s.closer, (closerMap.get(s.closer) || 0) + 1);
+      });
+      const total = sdrSales.length || 1;
+      result[c.name] = Array.from(closerMap.entries())
+        .map(([closer, count]) => ({
+          closer,
+          count,
+          percentage: parseFloat(((count / total) * 100).toFixed(1)),
+        }))
+        .sort((a, b) => b.count - a.count);
+    });
+    return result;
+  }, [filteredSales, collaborators]);
+
   // Build comparison chart data
   const appointmentChartData = useMemo(() => {
     const sdrNames = collaborators.map((c) => c.name);
