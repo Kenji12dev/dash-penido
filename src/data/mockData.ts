@@ -34,6 +34,14 @@ export const CLOSER_COMMISSION_RATES: Record<string, number> = {
   "Yan Pedro": 0.05,
 };
 
+export const CLOSER_COLOR_MAP: Record<string, string> = {
+  "Andre Kenji": CHART_COLORS[0],
+  "Joao Pedro": CHART_COLORS[1],
+  "Caio Alves": CHART_COLORS[2],
+  "Joao Vittor": CHART_COLORS[3],
+  "Yan Pedro": CHART_COLORS[4],
+};
+
 export const SDR_COMMISSION_RATE = 0.03;
 
 export const getCloserCommissionRate = (closer: string): number => {

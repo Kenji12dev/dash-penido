@@ -1,4 +1,4 @@
-import { CHART_COLORS } from "@/data/mockData";
+import { CHART_COLORS, CLOSER_COLOR_MAP } from "@/data/mockData";
 import { Users } from "lucide-react";
 
 interface SdrCloserDistributionProps {
@@ -54,7 +54,7 @@ const SdrCloserDistribution = ({ data }: SdrCloserDistributionProps) => {
                           className="h-full rounded-full transition-all duration-500"
                           style={{
                             width: `${Math.max(d.percentage, 3)}%`,
-                            backgroundColor: CHART_COLORS[i % CHART_COLORS.length],
+                            backgroundColor: CLOSER_COLOR_MAP[d.closer] || CHART_COLORS[i % CHART_COLORS.length],
                           }}
                         />
                       </div>
