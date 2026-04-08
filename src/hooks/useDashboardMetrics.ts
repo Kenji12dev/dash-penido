@@ -24,6 +24,7 @@ export interface DashboardMetrics {
   leadSourceData: { name: string; value: number; percentage: number; color: string }[];
   callStatusByCloser: Record<string, { name: string; count: number; color: string }[]>;
   closersList: string[];
+  sdrCloserDistribution: Record<string, { closer: string; count: number; percentage: number }[]>;
 }
 
 const STATUS_COLORS: Record<string, string> = Object.fromEntries(
@@ -199,6 +200,26 @@ export const useDashboardMetrics = (
     });
     const closersList = Array.from(closerStatusMap.keys()).sort();
 
+    // SDR → Closer distribution (based on all date-filtered sales, not just "Pago")
+    const sdrCloserDistribution: Record<string, { closer: string; count: number; percentage: number }[]> = {};
+    const allFilteredForDistribution = applyFilters(dateFiltered);
+    const sdrNamesSet = new Set(allFilteredForDistribution.map((s) => s.sdr));
+    sdrNamesSet.forEach((sdrName) => {
+      const sdrSales = allFilteredForDistribution.filter((s) => s.sdr === sdrName);
+      const closerCount = new Map<string, number>();
+      sdrSales.forEach((s) => {
+        closerCount.set(s.closer, (closerCount.get(s.closer) || 0) + 1);
+      });
+      const total = sdrSales.length || 1;
+      sdrCloserDistribution[sdrName] = Array.from(closerCount.entries())
+        .map(([closer, count]) => ({
+          closer,
+          count,
+          percentage: parseFloat(((count / total) * 100).toFixed(1)),
+        }))
+        .sort((a, b) => b.count - a.count);
+    });
+
     return {
       faturamentoLiquido,
       caixaGerado,
@@ -212,6 +233,7 @@ export const useDashboardMetrics = (
       leadSourceData,
       callStatusByCloser,
       closersList,
+      sdrCloserDistribution,
     };
   }, [sales, startDate, endDate, filters]);
 };
