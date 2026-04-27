@@ -5,7 +5,7 @@ import { ptBR } from "date-fns/locale";
 import { useSales, Sale } from "@/context/SalesContext";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Columns3, GripVertical, Plus, CalendarIcon, Save, X, ArrowRight, Trash2, Search } from "lucide-react";
+import { Columns3, GripVertical, Plus, CalendarIcon, Save, X, ArrowRight, Trash2, Search, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -369,6 +369,78 @@ const KanbanBoard = () => {
     setDetailSale(null);
   };
 
+  // Export filtered leads to CSV (includes briefing/notes)
+  const handleExportCSV = () => {
+    if (filteredSales.length === 0) {
+      toast.error("Nenhum lead para exportar no período selecionado.");
+      return;
+    }
+
+    const headers = [
+      "Data",
+      "Hora",
+      "Lead",
+      "Produto",
+      "Status",
+      "Closer",
+      "SDR",
+      "Origem do Lead",
+      "Método de Pagamento",
+      "Valor Bruto (R$)",
+      "Valor Líquido (R$)",
+      "Valor de Entrada (R$)",
+      "Pagamentos Híbridos",
+      "Briefing / Observações",
+    ];
+
+    const formatBRL = (n: number) =>
+      n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const escape = (val: string | number | undefined | null) => {
+      const s = val == null ? "" : String(val);
+      return `"${s.replace(/"/g, '""').replace(/\r?\n/g, " ")}"`;
+    };
+
+    const rows = filteredSales
+      .slice()
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .map((s) => {
+        const d = new Date(s.date);
+        const hybrid = s.hybridPayments && s.hybridPayments.length > 0
+          ? s.hybridPayments.map(p => `${p.method}: R$ ${formatBRL(p.value)}`).join(" | ")
+          : "";
+        return [
+          format(d, "dd/MM/yyyy", { locale: ptBR }),
+          format(d, "HH:mm", { locale: ptBR }),
+          s.clientName,
+          s.product,
+          s.status,
+          s.closer,
+          s.sdr,
+          s.leadSource,
+          s.paymentMethod,
+          formatBRL(s.grossValue || 0),
+          formatBRL(s.netValue || 0),
+          s.downPayment ? formatBRL(s.downPayment) : "",
+          hybrid,
+          s.notes || "",
+        ].map(escape).join(";");
+      });
+
+    const csv = "\uFEFF" + [headers.map(escape).join(";"), ...rows].join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const fileName = `leads_${format(startDate, "dd-MM-yyyy")}_a_${format(endDate, "dd-MM-yyyy")}.csv`;
+    link.href = url;
+    link.setAttribute("download", fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success(`${filteredSales.length} lead(s) exportado(s)`);
+  };
+
   const moveSale = moveDialog ? sales.find((s) => s.id === moveDialog.saleId) : null;
   const followUpSale = followUpDialog ? sales.find((s) => s.id === followUpDialog.saleId) : null;
 
@@ -385,12 +457,18 @@ const KanbanBoard = () => {
               {filteredSales.length} venda{filteredSales.length !== 1 && "s"}
             </span>
           </div>
-          {!isViewer && (
-            <Button onClick={() => setAddOpen(true)} size="sm" className="font-semibold">
-              <Plus className="h-4 w-4 mr-1" />
-              Novo Agendamento
+          <div className="flex items-center gap-2">
+            <Button onClick={handleExportCSV} size="sm" variant="outline" className="font-semibold">
+              <Download className="h-4 w-4 mr-1" />
+              Exportar CSV
             </Button>
-          )}
+            {!isViewer && (
+              <Button onClick={() => setAddOpen(true)} size="sm" className="font-semibold">
+                <Plus className="h-4 w-4 mr-1" />
+                Novo Agendamento
+              </Button>
+            )}
+          </div>
         </div>
 
 
