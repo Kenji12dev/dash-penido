@@ -600,6 +600,11 @@ const KanbanBoard = () => {
                               <span className="text-[10px] text-muted-foreground">{sale.paymentMethod}</span>
                             )}
                           </div>
+                          {sale.status === "Loss" && sale.lossReason && (
+                            <p className="text-[10px] text-red-500 mt-1 font-medium truncate">
+                              ⚠ {sale.lossReason}
+                            </p>
+                          )}
                           {sale.notes && (
                             <p className="text-[10px] text-muted-foreground mt-1 truncate italic">
                               📝 {sale.notes}
