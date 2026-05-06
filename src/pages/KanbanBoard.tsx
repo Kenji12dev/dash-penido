@@ -97,6 +97,10 @@ const KanbanBoard = () => {
   const [followUpStartTime, setFollowUpStartTime] = useState("10:00");
   const [followUpEndTime, setFollowUpEndTime] = useState("11:00");
 
+  // Loss dialog
+  const [lossDialog, setLossDialog] = useState<{ saleId: string } | null>(null);
+  const [lossReason, setLossReason] = useState<string>("");
+
   // Detail dialog (editable)
   const [detailSale, setDetailSale] = useState<Sale | null>(null);
   const [editNotes, setEditNotes] = useState("");
