@@ -444,6 +444,7 @@ const KanbanBoard = () => {
           formatBRL(s.netValue || 0),
           s.downPayment ? formatBRL(s.downPayment) : "",
           hybrid,
+          s.lossReason || "",
           s.notes || "",
         ].map(escape).join(";");
       });
