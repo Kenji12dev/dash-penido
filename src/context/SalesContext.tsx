@@ -199,6 +199,7 @@ export const SalesProvider = ({ children }: { children: ReactNode }) => {
     if (updates.leadSource !== undefined) dbUpdates.lead_source = updates.leadSource;
     if (updates.downPayment !== undefined) dbUpdates.down_payment = updates.downPayment ?? null;
     if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+    if (updates.lossReason !== undefined) dbUpdates.loss_reason = updates.lossReason ?? null;
     if (updates.hybridPayments !== undefined) dbUpdates.hybrid_payments = updates.hybridPayments ? JSON.stringify(updates.hybridPayments) : null;
 
     const { error } = await supabase
