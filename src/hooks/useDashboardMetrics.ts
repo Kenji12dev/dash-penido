@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useSales } from "@/context/SalesContext";
 import { format, isWithinInterval, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { PAYMENT_METHOD_MAP, LEAD_SOURCE_MAP, CHART_COLORS, STATUS_COLOR_MAP, calculateHybridCaixa, calculateNetValue } from "@/data/mockData";
+import { PAYMENT_METHOD_MAP, LEAD_SOURCE_MAP, CHART_COLORS, STATUS_COLOR_MAP, calculateHybridCaixa, calculateNetValue, LOSS_REASON_COLOR_MAP } from "@/data/mockData";
 
 export interface DashboardFilters {
   closer?: string;
