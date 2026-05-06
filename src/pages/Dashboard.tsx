@@ -126,6 +126,7 @@ const Dashboard = ({ onGoToKanban }: { onGoToKanban: () => void }) => {
           activeSource={filters.leadSource ? (LEAD_SOURCE_MAP[filters.leadSource]?.label || filters.leadSource) : undefined}
           onSourceClick={handleLeadSourceClick}
         />
+        <LossReasonDistribution data={metrics.lossReasonData} />
       </div>
     </div>
   );
