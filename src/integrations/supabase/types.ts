@@ -198,6 +198,7 @@ export type Database = {
           hybrid_payments: Json | null
           id: string
           lead_source: string | null
+          loss_reason: string | null
           net_value: number
           notes: string | null
           payment_method: string
@@ -217,6 +218,7 @@ export type Database = {
           hybrid_payments?: Json | null
           id?: string
           lead_source?: string | null
+          loss_reason?: string | null
           net_value?: number
           notes?: string | null
           payment_method: string
@@ -236,6 +238,7 @@ export type Database = {
           hybrid_payments?: Json | null
           id?: string
           lead_source?: string | null
+          loss_reason?: string | null
           net_value?: number
           notes?: string | null
           payment_method?: string
