@@ -18,6 +18,7 @@ export interface Sale {
   leadSource: string;
   downPayment?: number;
   notes: string;
+  lossReason?: string;
   hybridPayments?: HybridPayment[];
 }
 
