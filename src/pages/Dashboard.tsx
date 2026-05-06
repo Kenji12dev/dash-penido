@@ -10,6 +10,7 @@ import TeamPerformance from "@/components/dashboard/TeamPerformance";
 import PaymentDistribution from "@/components/dashboard/PaymentDistribution";
 import LeadSourceDistribution from "@/components/dashboard/LeadSourceDistribution";
 import StatusDistribution from "@/components/dashboard/StatusDistribution";
+import LossReasonDistribution from "@/components/dashboard/LossReasonDistribution";
 import CallStatusChart from "@/components/dashboard/CallStatusChart";
 import SdrCloserDistribution from "@/components/dashboard/SdrCloserDistribution";
 import MonthlyGoals from "@/components/dashboard/MonthlyGoals";
