@@ -25,6 +25,7 @@ export interface DashboardMetrics {
   callStatusByCloser: Record<string, { name: string; count: number; color: string }[]>;
   closersList: string[];
   sdrCloserDistribution: Record<string, { closer: string; count: number; percentage: number }[]>;
+  lossReasonData: { name: string; count: number; percentage: number; color: string }[];
 }
 
 const STATUS_COLORS: Record<string, string> = Object.fromEntries(
