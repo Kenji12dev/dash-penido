@@ -168,6 +168,7 @@ export const SalesProvider = ({ children }: { children: ReactNode }) => {
         lead_source: sale.leadSource,
         down_payment: sale.downPayment ?? null,
         notes: sale.notes,
+        loss_reason: sale.lossReason ?? null,
         hybrid_payments: sale.hybridPayments ? JSON.stringify(sale.hybridPayments) : null,
       } as any)
       .select()
