@@ -221,6 +221,21 @@ export const useDashboardMetrics = (
         .sort((a, b) => b.count - a.count);
     });
 
+    // Loss reason distribution (only Loss sales in date range, respecting other filters)
+    const lossSales = applyFilters(dateFiltered).filter((s) => s.status === "Loss" && s.lossReason);
+    const lossMap = new Map<string, number>();
+    lossSales.forEach((s) => {
+      const reason = s.lossReason as string;
+      lossMap.set(reason, (lossMap.get(reason) || 0) + 1);
+    });
+    const totalLoss = lossSales.length || 1;
+    const lossReasonData = Array.from(lossMap.entries()).map(([name, count]) => ({
+      name,
+      count,
+      percentage: parseFloat(((count / totalLoss) * 100).toFixed(1)),
+      color: LOSS_REASON_COLOR_MAP[name] || CHART_COLORS[0],
+    }));
+
     return {
       faturamentoLiquido,
       caixaGerado,
