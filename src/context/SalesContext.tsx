@@ -60,6 +60,7 @@ const mapRow = (row: any): Sale => ({
   leadSource: row.lead_source || "",
   downPayment: row.down_payment != null ? Number(row.down_payment) : undefined,
   notes: row.notes || "",
+  lossReason: row.loss_reason || undefined,
   hybridPayments: row.hybrid_payments
     ? (typeof row.hybrid_payments === "string"
         ? JSON.parse(row.hybrid_payments)
