@@ -258,6 +258,19 @@ const KanbanBoard = () => {
     setFollowUpEndTime("11:00");
   };
 
+  // Loss confirm
+  const handleLossConfirm = () => {
+    if (!lossDialog) return;
+    if (!lossReason) {
+      toast.error("Selecione o motivo do Loss.");
+      return;
+    }
+    updateSale(lossDialog.saleId, { status: "Loss", lossReason });
+    toast.success(`Movido para Loss — ${lossReason}`);
+    setLossDialog(null);
+    setLossReason("");
+  };
+
   // Delete
   const handleDelete = () => {
     if (!deleteId) return;
