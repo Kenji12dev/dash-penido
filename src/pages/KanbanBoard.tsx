@@ -410,6 +410,7 @@ const KanbanBoard = () => {
       "Valor Líquido (R$)",
       "Valor de Entrada (R$)",
       "Pagamentos Híbridos",
+      "Motivo do Loss",
       "Briefing / Observações",
     ];
 
