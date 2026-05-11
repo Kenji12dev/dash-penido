@@ -561,9 +561,21 @@ const KanbanBoard = () => {
               >
                 <div className="flex items-center justify-between mb-3 px-1">
                   <h2 className="text-sm font-semibold text-foreground">{col.label}</h2>
-                  <span className="text-xs font-medium text-muted-foreground bg-secondary rounded-full px-2 py-0.5">
-                    {items.length}
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs font-medium text-muted-foreground bg-secondary rounded-full px-2 py-0.5">
+                      {items.length}
+                    </span>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6"
+                      title={`Exportar ${col.label} (CSV)`}
+                      onClick={(e) => { e.stopPropagation(); handleExportCSV(col.id); }}
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
