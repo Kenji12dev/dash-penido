@@ -665,7 +665,7 @@ const PreSales = () => {
                 const funnelSteps = [
                   { stage: "Conversas Iniciadas", value: conversations, color: "hsl(var(--primary))" },
                   { stage: "Respostas 1ª Msg", value: replies, color: "hsl(var(--accent))" },
-                  { stage: "Calls Marcadas", value: calls, color: "hsl(220, 70%, 55%)" },
+                  { stage: "Calls Marcadas", value: calls, color: "hsl(215, 85%, 60%)" },
                 ];
 
                 return (

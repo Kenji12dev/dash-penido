@@ -484,7 +484,7 @@ const Collaborators = () => {
                                 <Button
                                   size="icon"
                                   variant="ghost"
-                                  className="text-blue-500 hover:text-blue-600"
+                                  className="text-primary hover:text-primary/80"
                                   title="Vincular Google Calendar"
                                   onClick={() => handleLinkCalendar(c.id)}
                                   disabled={calendarLinking === c.id}
