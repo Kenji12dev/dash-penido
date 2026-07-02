@@ -30,12 +30,13 @@ interface SalesContextType {
   products: string[];
   closers: string[];
   sdrs: string[];
+  refreshCollaborators: () => Promise<void>;
   loading: boolean;
 }
 
-const defaultProducts = ["Mentoria 10x", "Mentoria Individual"];
-const defaultClosers = ["Andre Kenji", "Joao Pedro", "Caio Alves", "Joao Vittor", "Yan Pedro"];
-const defaultSdrs = ["Harumi", "Kaique"];
+const defaultProducts = ["Mentoria em Grupo", "Mentoria Individual"];
+const defaultClosers = ["André Kenji"];
+const defaultSdrs = ["Juan Bandeira"];
 
 const SalesContext = createContext<SalesContextType | null>(null);
 
@@ -135,19 +136,20 @@ export const SalesProvider = ({ children }: { children: ReactNode }) => {
     fetchSales();
   }, [fetchSales]);
 
-  useEffect(() => {
-    const fetchCollaborators = async () => {
-      const { data } = await supabase
-        .from("collaborators")
-        .select("name, type")
-        .order("name");
-      if (data) {
-        setDbClosers(data.filter((c) => c.type === "closer").map((c) => c.name));
-        setDbSdrs(data.filter((c) => c.type === "sdr").map((c) => c.name));
-      }
-    };
-    fetchCollaborators();
+  const refreshCollaborators = useCallback(async () => {
+    const { data } = await supabase
+      .from("collaborators")
+      .select("name, type")
+      .order("name");
+    if (data) {
+      setDbClosers(data.filter((c) => c.type === "closer").map((c) => c.name));
+      setDbSdrs(data.filter((c) => c.type === "sdr").map((c) => c.name));
+    }
   }, []);
+
+  useEffect(() => {
+    refreshCollaborators();
+  }, [refreshCollaborators]);
 
   const closers = Array.from(new Set([...dbClosers, ...defaultClosers]));
   const sdrs = Array.from(new Set([...dbSdrs, ...defaultSdrs]));
@@ -245,6 +247,7 @@ export const SalesProvider = ({ children }: { children: ReactNode }) => {
         products: defaultProducts,
         closers,
         sdrs,
+        refreshCollaborators,
         loading,
       }}
     >

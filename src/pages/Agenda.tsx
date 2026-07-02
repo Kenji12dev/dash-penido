@@ -41,9 +41,7 @@ const HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR
 
 // Fixed SDR color map for consistency across all closers' calendars
 const SDR_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  "Kaique": { bg: "bg-sky-500/80", border: "border-sky-400", text: "text-white" },
-  "Harumi": { bg: "bg-rose-500/70", border: "border-rose-400", text: "text-white" },
-  "José": { bg: "bg-emerald-500/70", border: "border-emerald-400", text: "text-white" },
+  "Juan Bandeira": { bg: "bg-sky-500/80", border: "border-sky-400", text: "text-white" },
 };
 
 const DEFAULT_EVENT_COLOR = { bg: "bg-zinc-500/60", border: "border-zinc-400", text: "text-white" };

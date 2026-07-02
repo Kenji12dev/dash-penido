@@ -63,7 +63,7 @@ const formatCurrency = (v: number) =>
 
 const Collaborators = () => {
   const { user } = useAuth();
-  const { sales } = useSales();
+  const { sales, refreshCollaborators } = useSales();
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -258,6 +258,7 @@ const Collaborators = () => {
       setNewCollabPassword("");
       setNewCollabRole("colaborador");
       fetchCollaborators();
+      refreshCollaborators();
     }
   };
 
@@ -275,6 +276,7 @@ const Collaborators = () => {
       toast.success("Colaborador excluído!");
       setDeleteCollab(null);
       fetchCollaborators();
+      refreshCollaborators();
     }
   };
 
