@@ -3,7 +3,6 @@ import { startOfMonth } from "date-fns";
 import { useAuth } from "@/context/AuthContext";
 import DateFilter from "@/components/dashboard/DateFilter";
 import CalendarLinkCard from "@/components/dashboard/CalendarLinkCard";
-import OverdueAlerts from "@/components/dashboard/OverdueAlerts";
 import KPICard from "@/components/dashboard/KPICard";
 import RevenueChart from "@/components/dashboard/RevenueChart";
 import TeamPerformance from "@/components/dashboard/TeamPerformance";
@@ -47,7 +46,6 @@ const Dashboard = ({ onGoToKanban }: { onGoToKanban: () => void }) => {
     <div className="p-4 sm:p-6 lg:p-10">
       <div className="max-w-[1440px] mx-auto space-y-8">
         {role === "colaborador" && <CalendarLinkCard />}
-        <OverdueAlerts onGoToKanban={onGoToKanban} />
         <DateFilter
           startDate={startDate}
           endDate={endDate}
