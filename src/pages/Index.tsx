@@ -10,8 +10,14 @@ import PreSales from "@/pages/PreSales";
 import Profile from "@/pages/Profile";
 import Agenda from "@/pages/Agenda";
 
+const TABS = ["dashboard", "kanban", "database", "pre-sales", "agenda", "collaborators", "profile"];
+
 const Index = () => {
-  const [activeTab, setActiveTab] = useState("dashboard");
+  // ?tab=agenda abre direto na aba (usado pelo clique na notificacao push).
+  const [activeTab, setActiveTab] = useState(() => {
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    return tab && TABS.includes(tab) ? tab : "dashboard";
+  });
   const { role, user } = useAuth();
 
   const isViewer = role === "visualizador";

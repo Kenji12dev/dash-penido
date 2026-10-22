@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { CalendarDays, Check, Loader2, Save, User } from "lucide-react";
 import { toast } from "sonner";
+import PushNotificationsCard from "@/components/profile/PushNotificationsCard";
 
 interface CollaboratorOption {
   id: string;
@@ -212,6 +213,9 @@ const Profile = () => {
             Salvar
           </Button>
         </div>
+
+        {/* Push notifications */}
+        {user && <PushNotificationsCard userId={user.id} />}
 
         {/* Link collaborator if not linked */}
         {!collaboratorId && allCollaborators.length > 0 && (
