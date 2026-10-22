@@ -20,12 +20,25 @@ export interface Sale {
   notes: string;
   lossReason?: string;
   hybridPayments?: HybridPayment[];
+  /** Preenchidos so nas aplicacoes vindas do formulario. */
+  whatsapp?: string;
+  instagram?: string;
+  /** Respostas do formulario, "Pergunta: resposta" por linha. Nao se edita. */
+  formAnswers?: string;
+  /** Id da resposta no formulario externo (Respondi): presente = o lead chegou por formulario. */
+  externalSubmissionId?: string;
+  /** Quando a linha entrou no banco. Para aplicacao, e a data em que chegou;
+   *  `date` passa a ser a data da call quando o lead e agendado. */
+  createdAt?: Date;
+  /** Primeira vez que o lead entrou em "Ativado" (gravado por gatilho no banco). */
+  activatedAt?: Date;
 }
 
 interface SalesContextType {
   sales: Sale[];
   addSale: (sale: Omit<Sale, "id">) => Promise<Sale | null>;
-  updateSale: (id: string, sale: Partial<Omit<Sale, "id">>) => Promise<void>;
+  /** Resolve false quando o banco recusou a atualizacao (o toast de erro ja foi mostrado). */
+  updateSale: (id: string, sale: Partial<Omit<Sale, "id">>) => Promise<boolean>;
   deleteSale: (id: string) => Promise<void>;
   products: string[];
   closers: string[];
@@ -62,6 +75,12 @@ const mapRow = (row: any): Sale => ({
   downPayment: row.down_payment != null ? Number(row.down_payment) : undefined,
   notes: row.notes || "",
   lossReason: row.loss_reason || undefined,
+  whatsapp: row.whatsapp || undefined,
+  instagram: row.instagram || undefined,
+  formAnswers: row.form_answers || undefined,
+  externalSubmissionId: row.external_submission_id || undefined,
+  createdAt: row.created_at ? new Date(row.created_at) : undefined,
+  activatedAt: row.activated_at ? new Date(row.activated_at) : undefined,
   hybridPayments: row.hybrid_payments
     ? (typeof row.hybrid_payments === "string"
         ? JSON.parse(row.hybrid_payments)
@@ -187,7 +206,7 @@ export const SalesProvider = ({ children }: { children: ReactNode }) => {
     return createdSale;
   };
 
-  const updateSale = async (id: string, updates: Partial<Omit<Sale, "id">>) => {
+  const updateSale = async (id: string, updates: Partial<Omit<Sale, "id">>): Promise<boolean> => {
     const dbUpdates: Record<string, any> = {};
     if (updates.date) dbUpdates.date = updates.date.toISOString();
     if (updates.clientName !== undefined) dbUpdates.client_name = updates.clientName;
@@ -202,6 +221,9 @@ export const SalesProvider = ({ children }: { children: ReactNode }) => {
     if (updates.downPayment !== undefined) dbUpdates.down_payment = updates.downPayment ?? null;
     if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
     if (updates.lossReason !== undefined) dbUpdates.loss_reason = updates.lossReason ?? null;
+    if (updates.whatsapp !== undefined) dbUpdates.whatsapp = updates.whatsapp ?? null;
+    if (updates.instagram !== undefined) dbUpdates.instagram = updates.instagram ?? null;
+    if (updates.formAnswers !== undefined) dbUpdates.form_answers = updates.formAnswers ?? null;
     if (updates.hybridPayments !== undefined) dbUpdates.hybrid_payments = updates.hybridPayments ? JSON.stringify(updates.hybridPayments) : null;
 
     const { error } = await supabase
@@ -212,11 +234,20 @@ export const SalesProvider = ({ children }: { children: ReactNode }) => {
     if (error) {
       console.error("Error updating sale:", error);
       toast.error("Erro ao atualizar venda");
-      return;
+      return false;
     }
     setSales((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, ...updates } : s))
+      prev.map((s) => {
+        if (s.id !== id) return s;
+        const next = { ...s, ...updates };
+        // Espelha o gatilho do banco: primeira ativacao grava o horario.
+        if (updates.status === "Ativado" && !s.activatedAt) next.activatedAt = new Date();
+        // Voltou para Aplicacoes: zera, a proxima ativacao e medida de novo.
+        if (updates.status === "Aplicação" && s.status === "Ativado") next.activatedAt = undefined;
+        return next;
+      })
     );
+    return true;
   };
 
   const deleteSale = async (id: string) => {
@@ -231,6 +262,15 @@ export const SalesProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     if (count === 0) {
+      // Zero linhas apagadas nao significa necessariamente falta de permissao:
+      // o cartao pode ja ter sido apagado (outra aba, outro usuario, limpeza no
+      // banco) e esta tela ainda o mostrava. Confere antes de acusar permissao.
+      const { data: aindaExiste } = await supabase.from("sales").select("id").eq("id", id).maybeSingle();
+      if (!aindaExiste) {
+        setSales((prev) => prev.filter((s) => s.id !== id));
+        toast.info("Esse cartão já tinha sido excluído. A tela foi atualizada.");
+        return;
+      }
       toast.error("Sem permissão para excluir esta venda");
       return;
     }

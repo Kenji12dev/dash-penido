@@ -14,6 +14,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { format, addDays, startOfWeek, endOfWeek, isSameDay, parseISO, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { withTime } from "@/lib/tempo";
 import { toast } from "sonner";
 import { LEAD_SOURCES } from "@/data/mockData";
 
@@ -195,7 +196,7 @@ const Agenda = () => {
       return;
     }
     const createdSale = await addSale({
-      date: newDate,
+      date: withTime(newDate, newStartTime),
       clientName: newClient.trim(),
       product: newProduct,
       grossValue: 0,

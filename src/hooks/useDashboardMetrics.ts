@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { useSales } from "@/context/SalesContext";
-import { format, isWithinInterval, startOfDay, endOfDay } from "date-fns";
+import { format, isWithinInterval, startOfDay, endOfDay, eachDayOfInterval, min as minDate } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { PAYMENT_METHOD_MAP, LEAD_SOURCE_MAP, CHART_COLORS, STATUS_COLOR_MAP, calculateHybridCaixa, calculateNetValue, LOSS_REASON_COLOR_MAP } from "@/data/mockData";
+import { PAYMENT_METHOD_MAP, LEAD_SOURCE_MAP, CHART_COLORS, STATUS_COLOR_MAP, calculateHybridCaixa, calculateNetValue, LOSS_REASON_COLOR_MAP, isLeadStatus } from "@/data/mockData";
 
 export interface DashboardFilters {
   closer?: string;
@@ -26,7 +26,37 @@ export interface DashboardMetrics {
   closersList: string[];
   sdrCloserDistribution: Record<string, { closer: string; count: number; percentage: number }[]>;
   lossReasonData: { name: string; count: number; percentage: number; color: string }[];
+  leadFunnel: LeadFunnel;
 }
+
+/** Em que pe esta cada lead do periodo: aplicacoes do formulario e os lancados a mao. */
+export interface LeadFunnel {
+  total: number;
+  /** Tempo da aplicacao ate a ativacao (minutos), so leads do formulario ja ativados. */
+  ativacao: { amostra: number; mediaMin: number | null; medianaMin: number | null };
+  origins: { name: string; color: string }[];
+  /** Um item por estagio; `byOrigin` e a contagem por origem, para empilhar. */
+  stages: { key: string; label: string; count: number; percentage: number; byOrigin: Record<string, number> }[];
+}
+
+const LEAD_STAGE_OF: Record<string, string> = {
+  "Aplicação": "aguardando",
+  Ativado: "ativado",
+  Descartado: "descartado",
+  // Tudo que passou por agendamento, inclusive o desfecho da call.
+  Pendente: "agendado",
+  "Follow Up": "agendado",
+  "No Show": "agendado",
+  Pago: "agendado",
+  Loss: "agendado",
+  Reembolsado: "agendado",
+};
+const LEAD_STAGES: { key: string; label: string }[] = [
+  { key: "aguardando", label: "Aguardando" },
+  { key: "ativado", label: "Ativados" },
+  { key: "agendado", label: "Agendados" },
+  { key: "descartado", label: "Descartados" },
+];
 
 const STATUS_COLORS: Record<string, string> = Object.fromEntries(
   Object.entries(STATUS_COLOR_MAP).map(([k, v]) => [k, v.hsl])
@@ -40,8 +70,60 @@ export const useDashboardMetrics = (
   const { sales } = useSales();
 
   return useMemo(() => {
-    // Date-filtered sales (all statuses for status chart)
+    // Funil das aplicacoes: conta por estagio atual, no periodo em que a
+    // aplicacao CHEGOU (created_at), porque `date` vira a data da call quando o
+    // lead e agendado e sairia do periodo.
+    // So entram os leads vindos de formulario (externalSubmissionId presente).
+    const leads = sales.filter((s) => {
+      const ref = s.externalSubmissionId ? s.createdAt : undefined;
+      if (!ref) return false;
+      return isWithinInterval(new Date(ref), { start: startOfDay(startDate), end: endOfDay(endDate) });
+    });
+    const origemFunil = (s: (typeof sales)[number]) => s.leadSource || "Formulário";
+    const originNames = Array.from(new Set(leads.map(origemFunil))).sort();
+    const leadFunnel: LeadFunnel = {
+      total: leads.length,
+      ativacao: (() => {
+        const mins = leads
+          .filter((s) => s.externalSubmissionId && s.createdAt && s.activatedAt)
+          .map((s) => (s.activatedAt!.getTime() - s.createdAt!.getTime()) / 60000)
+          .filter((m) => m >= 0)
+          .sort((a, b) => a - b);
+        if (!mins.length) return { amostra: 0, mediaMin: null, medianaMin: null };
+        const mid = Math.floor(mins.length / 2);
+        return {
+          amostra: mins.length,
+          mediaMin: mins.reduce((a, b) => a + b, 0) / mins.length,
+          medianaMin: mins.length % 2 ? mins[mid] : (mins[mid - 1] + mins[mid]) / 2,
+        };
+      })(),
+      origins: originNames.map((name) => ({ name, color: LEAD_SOURCE_MAP[name]?.color || CHART_COLORS[0] })),
+      stages: LEAD_STAGES.map(({ key, label }) => {
+        const inStage = leads.filter((s) => (LEAD_STAGE_OF[s.status] || "aguardando") === key);
+        const byOrigin: Record<string, number> = {};
+        inStage.forEach((s) => {
+          const o = origemFunil(s);
+          byOrigin[o] = (byOrigin[o] || 0) + 1;
+        });
+        return {
+          key,
+          label,
+          count: inStage.length,
+          percentage: leads.length ? parseFloat(((inStage.length / leads.length) * 100).toFixed(1)) : 0,
+          byOrigin,
+        };
+      }),
+    };
+
+    // Date-filtered sales (all statuses for status chart).
+    // Aplicacoes do formulario ficam de fora de tudo aqui: sao leads que ainda nao
+    // viraram call, entao contariam como calls no grafico de status e
+    // apareceriam como um closer/SDR vazio na distribuicao.
     const dateFiltered = sales.filter((s) => {
+      if (isLeadStatus(s.status)) return false;
+      // Aplicacao descartada sem nunca ter sido agendada: nao e call, e um
+      // closer vazio viraria uma chave "" nos graficos por closer.
+      if (!s.closer) return false;
       const saleDate = new Date(s.date);
       return isWithinInterval(saleDate, {
         start: startOfDay(startDate),
@@ -109,14 +191,20 @@ export const useDashboardMetrics = (
     const quantidadeVendas = filteredSales.length;
     const ticketMedio = quantidadeVendas > 0 ? faturamentoLiquido / quantidadeVendas : 0;
 
+    // Um ponto por dia do periodo, em ordem cronologica (1o dia a esquerda),
+    // incluindo dias sem venda com zero; o periodo nao passa de hoje.
     const revenueByDay = new Map<string, number>();
     filteredSales.forEach((s) => {
-      const key = format(new Date(s.date), "dd MMM", { locale: ptBR });
+      const key = format(new Date(s.date), "yyyy-MM-dd");
       revenueByDay.set(key, (revenueByDay.get(key) || 0) + s.netValue);
     });
-    const revenueOverTime = Array.from(revenueByDay.entries()).map(([date, revenue]) => ({
-      date,
-      revenue,
+    const ultimoDia = minDate([endOfDay(endDate), endOfDay(new Date())]);
+    const dias = startOfDay(startDate) <= ultimoDia
+      ? eachDayOfInterval({ start: startOfDay(startDate), end: ultimoDia })
+      : [];
+    const revenueOverTime = dias.map((d) => ({
+      date: format(d, "dd MMM", { locale: ptBR }),
+      revenue: revenueByDay.get(format(d, "yyyy-MM-dd")) || 0,
     }));
 
     const closerMap = new Map<string, { sales: number; revenue: number }>();
@@ -251,6 +339,7 @@ export const useDashboardMetrics = (
       closersList,
       sdrCloserDistribution,
       lossReasonData,
+      leadFunnel,
     };
   }, [sales, startDate, endDate, filters]);
 };

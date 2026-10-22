@@ -188,6 +188,12 @@ export type Database = {
       }
       sales: {
         Row: {
+          activated_at: string | null
+          call_reminder_sent_at: string | null
+          external_submission_id: string | null
+          form_answers: string | null
+          instagram: string | null
+          whatsapp: string | null
           client_name: string
           closer: string
           created_at: string
@@ -208,6 +214,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          activated_at?: string | null
+          call_reminder_sent_at?: string | null
+          external_submission_id?: string | null
+          form_answers?: string | null
+          instagram?: string | null
+          whatsapp?: string | null
           client_name: string
           closer: string
           created_at?: string
@@ -228,6 +240,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          activated_at?: string | null
+          call_reminder_sent_at?: string | null
+          external_submission_id?: string | null
+          form_answers?: string | null
+          instagram?: string | null
+          whatsapp?: string | null
           client_name?: string
           closer?: string
           created_at?: string
@@ -466,6 +484,36 @@ export type Database = {
         Update: {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_agent?: string | null
           user_id?: string
         }
         Relationships: []

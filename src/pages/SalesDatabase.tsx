@@ -4,7 +4,7 @@ import DateFilter from "@/components/dashboard/DateFilter";
 import { ptBR } from "date-fns/locale";
 import { useSales, Sale } from "@/context/SalesContext";
 import { useAuth } from "@/context/AuthContext";
-import { PAYMENT_METHODS, LEAD_SOURCES, calculateNetValue, getFeeDescription, STATUS_COLOR_MAP } from "@/data/mockData";
+import { PAYMENT_METHODS, LEAD_SOURCES, calculateNetValue, getFeeDescription, STATUS_COLOR_MAP, isLeadStatus } from "@/data/mockData";
 import { Database, Search, Trash2, Pencil, X, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -32,7 +32,7 @@ const statusColors: Record<string, string> = Object.fromEntries(
   Object.entries(STATUS_COLOR_MAP).map(([k, v]) => [k, v.textClass])
 );
 
-const statuses = ["Pago", "Pendente", "Follow Up", "Loss", "No Show", "Reembolsado"];
+const statuses = ["Pago", "Pendente", "Follow Up", "Loss", "No Show", "Reembolsado", "Descartado"];
 
 const SalesDatabase = () => {
   const { sales, deleteSale, updateSale, products, closers, sdrs } = useSales();
@@ -60,6 +60,8 @@ const SalesDatabase = () => {
 
   const filtered = sales
     .filter((s) => {
+      // Aplicacoes vivem so no Kanban; aqui e a base de vendas.
+      if (isLeadStatus(s.status)) return false;
       const matchesSearch =
         !search ||
         s.clientName.toLowerCase().includes(search.toLowerCase());
@@ -170,6 +172,7 @@ const SalesDatabase = () => {
                 <SelectItem value="Follow Up">Follow Up</SelectItem>
                 <SelectItem value="Loss">Loss</SelectItem>
                 <SelectItem value="Reembolsado">Reembolsado</SelectItem>
+                <SelectItem value="Descartado">Descartado</SelectItem>
               </SelectContent>
             </Select>
             <DateFilter startDate={startDate} endDate={endDate} onStartDateChange={setStartDate} onEndDateChange={setEndDate} />

@@ -7,9 +7,10 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Columns3, GripVertical, Plus, CalendarIcon, Save, X, ArrowRight, Trash2, Search, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { duracao, withTime } from "@/lib/tempo";
 import { toast } from "sonner";
 
-import { PAYMENT_METHODS, LEAD_SOURCES, calculateNetValue, getFeeDescription, HybridPayment, calculateHybridNetValue, calculateHybridCaixa, STATUS_COLOR_MAP, LOSS_REASONS } from "@/data/mockData";
+import { PAYMENT_METHODS, LEAD_SOURCES, calculateNetValue, getFeeDescription, HybridPayment, calculateHybridNetValue, calculateHybridCaixa, STATUS_COLOR_MAP, LOSS_REASONS, LEAD_STATUSES } from "@/data/mockData";
 import {
   Dialog,
   DialogContent,
@@ -46,13 +47,48 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const statusColumns = [
+  { id: "Aplicação", label: "Aplicações", color: STATUS_COLOR_MAP["Aplicação"].borderBgClass },
+  { id: "Ativado", label: "Ativado", color: STATUS_COLOR_MAP["Ativado"].borderBgClass },
   { id: "Pendente", label: "Agendado / Pendente", color: STATUS_COLOR_MAP["Pendente"].borderBgClass },
   { id: "Pago", label: "Pago", color: STATUS_COLOR_MAP["Pago"].borderBgClass },
   { id: "Loss", label: "Loss", color: STATUS_COLOR_MAP["Loss"].borderBgClass },
   { id: "Follow Up", label: "Follow Up", color: STATUS_COLOR_MAP["Follow Up"].borderBgClass },
   { id: "No Show", label: "No Show", color: STATUS_COLOR_MAP["No Show"].borderBgClass },
   { id: "Reembolsado", label: "Reembolsado", color: STATUS_COLOR_MAP["Reembolsado"].borderBgClass },
+  { id: "Descartado", label: "Descartados", color: STATUS_COLOR_MAP["Descartado"].borderBgClass },
 ];
+
+/** Status que sao lead ainda sem call: viram agendamento ao ir para Pendente. */
+const STATUS_DE_LEAD: readonly string[] = LEAD_STATUSES;
+
+/** Selo de origem do cartao de aplicacao: de qual formulario externo veio. */
+const ORIGEM_BADGE: Record<string, string> = {
+  "Formulário": "border-cyan-500/40 bg-cyan-500/15 text-cyan-300",
+};
+const origemBadgeClass = (origem: string) =>
+  ORIGEM_BADGE[origem] ?? "border-border bg-secondary text-muted-foreground";
+
+/** "@fulano", "fulano" ou uma URL do Instagram viram "@fulano" e um link. */
+const instagramHandle = (raw: string) =>
+  raw.trim().replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/\/.*$/, "").replace(/^@/, "");
+const instagramUrl = (raw: string) => `https://instagram.com/${instagramHandle(raw)}`;
+const whatsappUrl = (raw: string) => `https://wa.me/${raw.replace(/\D/g, "")}`;
+
+/** Notas no formato "Pergunta: resposta" por linha (como a function grava). */
+const respostasDoFormulario = (notes: string) =>
+  notes
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((l) => {
+      // A pergunta pode ter ": " (ex.: "...preciso saber: qual e..."); a resposta de
+      // multipla escolha nao, entao o ultimo separador e o que divide os dois.
+      const i = l.lastIndexOf(": ");
+      return i > 0 ? { pergunta: l.slice(0, i), resposta: l.slice(i + 2) } : { pergunta: "", resposta: l };
+    });
+
+/** Cartoes visiveis por coluna antes do "ver mais". */
+const CARDS_POR_COLUNA = 5;
 
 const KanbanBoard = () => {
   const { sales, addSale, updateSale, deleteSale, products, closers, sdrs } = useSales();
@@ -60,6 +96,7 @@ const KanbanBoard = () => {
   const isViewer = role === "visualizador";
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverColId, setDragOverColId] = useState<string | null>(null);
+  const [colunasExpandidas, setColunasExpandidas] = useState<Record<string, boolean>>({});
 
   // Filters
   const [search, setSearch] = useState("");
@@ -80,6 +117,8 @@ const KanbanBoard = () => {
   const [newSdr, setNewSdr] = useState("");
   const [newLeadSource, setNewLeadSource] = useState("");
   const [newNotes, setNewNotes] = useState("");
+  // Aplicacao sendo promovida a agendamento pelo drag; null = agendamento do zero.
+  const [agendandoAplicacaoId, setAgendandoAplicacaoId] = useState<string | null>(null);
 
   // Move dialog
   const [moveDialog, setMoveDialog] = useState<{ saleId: string; targetStatus: string } | null>(null);
@@ -100,6 +139,10 @@ const KanbanBoard = () => {
   // Loss dialog
   const [lossDialog, setLossDialog] = useState<{ saleId: string } | null>(null);
   const [lossReason, setLossReason] = useState<string>("");
+
+  // Ativar dialog: ao ativar um lead, escolhe o SDR responsavel
+  const [ativarDialog, setAtivarDialog] = useState<{ saleId: string } | null>(null);
+  const [ativarSdr, setAtivarSdr] = useState("");
 
   // Detail dialog (editable)
   const [detailSale, setDetailSale] = useState<Sale | null>(null);
@@ -136,29 +179,115 @@ const KanbanBoard = () => {
     e.dataTransfer.dropEffect = "move";
     setDragOverColId(colId);
   };
+  /** Destinos validos para um cartao, pelas mesmas regras do arrasto. */
+  const destinosPermitidos = (sale: Sale) => {
+    const origemLead = STATUS_DE_LEAD.includes(sale.status);
+    return statusColumns
+      .map((c) => c.id)
+      .filter((id) => id !== sale.status)
+      .filter((id) => {
+        const destinoLead = STATUS_DE_LEAD.includes(id);
+        if (destinoLead) return origemLead;
+        if (origemLead) return id === "Pendente" || id === "Descartado";
+        return true;
+      });
+  };
+
+  /**
+   * Move um cartao de coluna. Usado pelo arrasto (computador) e pelo seletor
+   * de status no detalhe do cartao (celular, onde arrastar nao funciona).
+   * Abre o dialogo certo para cada destino: agendamento, SDR, Loss, pagamento.
+   */
+  const moverCartao = (sale: Sale, targetStatus: string) => {
+    if (sale.status === targetStatus) return;
+    const origemLead = STATUS_DE_LEAD.includes(sale.status);
+    const destinoLead = STATUS_DE_LEAD.includes(targetStatus);
+
+    // Coluna de lead so recebe lead: soltar uma venda em Aplicacoes/Ativado a
+    // esconderia das metricas e da base, sem volta pelo quadro.
+    if (destinoLead && !origemLead) {
+      toast.error(`Só aplicações podem ir para ${targetStatus}.`);
+      return;
+    }
+
+    // Um lead sem call so tem tres saidas: outra coluna de lead (Ativado, ou
+    // voltar), agendar (Pendente) ou descartar. Qualquer outro destino viraria
+    // uma "venda" sem closer nem produto, e isso contamina os graficos.
+    if (origemLead && !destinoLead && targetStatus !== "Pendente" && targetStatus !== "Descartado") {
+      toast.error(`Agende o lead antes de mover para ${targetStatus}.`);
+      return;
+    }
+
+    if (origemLead && targetStatus === "Pendente") {
+      // Aplicacao virando call: o que falta e data, closer e produto, nao
+      // pagamento. Reaproveita o formulario de novo agendamento com o que a
+      // aplicacao ja trouxe do formulario.
+      setNewClient(sale.clientName);
+      setNewNotes(sale.notes || "");
+      setNewLeadSource(sale.leadSource || "");
+      setNewSdr(sale.sdr || "");
+      setAgendandoAplicacaoId(sale.id);
+      setAddOpen(true);
+    } else if (targetStatus === "Loss") {
+      setLossDialog({ saleId: sale.id });
+      setLossReason(sale.lossReason || "");
+    } else if (targetStatus === "Ativado") {
+      // Ativar = um SDR assumiu o lead: pergunta quem, sugerindo o atual.
+      setAtivarSdr(sale.sdr || (sdrs.length === 1 ? sdrs[0] : ""));
+      setAtivarDialog({ saleId: sale.id });
+    } else if (destinoLead) {
+      // Caminho de volta para Aplicacoes.
+      updateSale(sale.id, { status: targetStatus });
+      toast.success(`Lead movido para ${targetStatus}`);
+    } else if (targetStatus === "No Show" || targetStatus === "Descartado") {
+      updateSale(sale.id, { status: targetStatus });
+      toast.success(origemLead ? "Lead descartado" : `Venda movida para ${targetStatus}`);
+    } else if (targetStatus === "Follow Up") {
+      setFollowUpDialog({ saleId: sale.id });
+    } else {
+      setMoveDialog({ saleId: sale.id, targetStatus });
+      setMoveGross(sale.grossValue > 0 ? String(sale.grossValue) : "");
+      setMovePayment(sale.paymentMethod || "");
+      setMoveDownPayment(sale.downPayment ? String(sale.downPayment) : "");
+    }
+  };
+
   const handleDrop = (e: React.DragEvent, targetStatus: string) => {
     e.preventDefault();
-    if (!draggedId) return;
-    const sale = sales.find((s) => s.id === draggedId);
-    if (sale && sale.status !== targetStatus) {
-      if (targetStatus === "Loss") {
-        setLossDialog({ saleId: draggedId });
-        setLossReason(sale.lossReason || "");
-      } else if (targetStatus === "No Show") {
-        updateSale(draggedId, { status: targetStatus });
-        toast.success(`Venda movida para ${targetStatus}`);
-      } else if (targetStatus === "Follow Up") {
-        setFollowUpDialog({ saleId: draggedId });
-      } else {
-        setMoveDialog({ saleId: draggedId, targetStatus });
-        setMoveGross(sale.grossValue > 0 ? String(sale.grossValue) : "");
-        setMovePayment(sale.paymentMethod || "");
-        setMoveDownPayment(sale.downPayment ? String(sale.downPayment) : "");
-      }
-    }
+    const sale = draggedId ? sales.find((s) => s.id === draggedId) : undefined;
+    if (sale) moverCartao(sale, targetStatus);
     setDraggedId(null);
     setDragOverColId(null);
   };
+
+  /** Seletor de status do detalhe: fecha o detalhe e segue o mesmo fluxo do arrasto. */
+  const moverPeloDetalhe = (targetStatus: string) => {
+    if (!detailSale) return;
+    const sale = detailSale;
+    setDetailSale(null);
+    moverCartao(sale, targetStatus);
+  };
+
+  /** Bloco "Mover para" do detalhe do cartao. */
+  const seletorStatus = (sale: Sale) =>
+    isViewer ? null : (
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold text-muted-foreground">Mover para</Label>
+        <Select value="" onValueChange={moverPeloDetalhe}>
+          <SelectTrigger>
+            <SelectValue placeholder={`Atual: ${statusColumns.find((c) => c.id === sale.status)?.label ?? sale.status}`} />
+          </SelectTrigger>
+          <SelectContent>
+            {destinosPermitidos(sale).map((id) => (
+              <SelectItem key={id} value={id}>
+                {statusColumns.find((c) => c.id === id)?.label ?? id}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    );
+
   const handleDragEnd = () => {
     setDraggedId(null);
     setDragOverColId(null);
@@ -222,7 +351,7 @@ const KanbanBoard = () => {
   const handleFollowUpConfirm = async () => {
     if (!followUpDialog) return;
     const sale = sales.find((s) => s.id === followUpDialog.saleId);
-    updateSale(followUpDialog.saleId, { status: "Follow Up", date: followUpDate });
+    updateSale(followUpDialog.saleId, { status: "Follow Up", date: withTime(followUpDate, followUpStartTime) });
     toast.success("Movido para Follow Up");
 
     // Create calendar event for follow-up
@@ -296,6 +425,7 @@ const KanbanBoard = () => {
     setNewSdr("");
     setNewLeadSource("");
     setNewNotes("");
+    setAgendandoAplicacaoId(null);
   };
 
   const handleAddSave = async () => {
@@ -303,22 +433,39 @@ const KanbanBoard = () => {
       toast.error("Preencha todos os campos obrigatórios.");
       return;
     }
-    const createdSale = await addSale({
-      date: newDate,
-      clientName: newClient.trim(),
-      product: newProduct,
-      grossValue: 0,
-      netValue: 0,
-      paymentMethod: "",
-      closer: newCloser,
-      sdr: newSdr,
-      status: "Pendente",
-      leadSource: newLeadSource,
-      notes: newNotes.trim(),
-    });
+    if (agendandoAplicacaoId) {
+      const ok = await updateSale(agendandoAplicacaoId, {
+        date: withTime(newDate, newStartTime),
+        clientName: newClient.trim(),
+        product: newProduct,
+        closer: newCloser,
+        sdr: newSdr,
+        status: "Pendente",
+        leadSource: newLeadSource,
+        notes: newNotes.trim(),
+      });
+      // Se o banco recusou, o dialogo fica aberto com o que foi digitado e o
+      // Calendar nao recebe evento de uma call que nao existe.
+      if (!ok) return;
+      toast.success("Aplicação agendada!");
+    } else {
+      const createdSale = await addSale({
+        date: withTime(newDate, newStartTime),
+        clientName: newClient.trim(),
+        product: newProduct,
+        grossValue: 0,
+        netValue: 0,
+        paymentMethod: "",
+        closer: newCloser,
+        sdr: newSdr,
+        status: "Pendente",
+        leadSource: newLeadSource,
+        notes: newNotes.trim(),
+      });
 
-    if (!createdSale) return;
-    toast.success("Agendamento criado!");
+      if (!createdSale) return;
+      toast.success("Agendamento criado!");
+    }
 
     try {
       const { data, error } = await supabase.functions.invoke("google-calendar-event", {
@@ -408,6 +555,8 @@ const KanbanBoard = () => {
       "Closer",
       "SDR",
       "Origem do Lead",
+      "Instagram",
+      "WhatsApp",
       "Método de Pagamento",
       "Valor Bruto (R$)",
       "Valor Líquido (R$)",
@@ -415,6 +564,7 @@ const KanbanBoard = () => {
       "Pagamentos Híbridos",
       "Motivo do Loss",
       "Briefing / Observações",
+      "Respostas do formulário",
     ];
 
     const formatBRL = (n: number) =>
@@ -442,6 +592,8 @@ const KanbanBoard = () => {
           s.closer,
           s.sdr,
           s.leadSource,
+          s.instagram ? "@" + instagramHandle(s.instagram) : "",
+          s.whatsapp || "",
           s.paymentMethod,
           formatBRL(s.grossValue || 0),
           formatBRL(s.netValue || 0),
@@ -449,6 +601,7 @@ const KanbanBoard = () => {
           hybrid,
           s.lossReason || "",
           s.notes || "",
+          s.formAnswers || "",
         ].map(escape).join(";");
       });
 
@@ -479,9 +632,6 @@ const KanbanBoard = () => {
             <h1 className="text-lg font-bold text-foreground tracking-tight">
               Fluxo de Status
             </h1>
-            <span className="text-xs text-muted-foreground bg-secondary px-2 py-1 rounded-md">
-              {filteredSales.length} venda{filteredSales.length !== 1 && "s"}
-            </span>
           </div>
           <div className="flex items-center gap-2">
             <Button onClick={() => handleExportCSV()} size="sm" variant="outline" className="font-semibold">
@@ -544,9 +694,12 @@ const KanbanBoard = () => {
           <DateFilter startDate={startDate} endDate={endDate} onStartDateChange={setStartDate} onEndDateChange={setEndDate} />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           {statusColumns.map((col) => {
-            const items = salesByStatus(col.id);
+            const todos = salesByStatus(col.id);
+            const expandida = !!colunasExpandidas[col.id];
+            const items = expandida ? todos : todos.slice(0, CARDS_POR_COLUNA);
+            const ocultos = todos.length - items.length;
             return (
               <div
                 key={col.id}
@@ -563,7 +716,7 @@ const KanbanBoard = () => {
                   <h2 className="text-sm font-semibold text-foreground">{col.label}</h2>
                   <div className="flex items-center gap-1">
                     <span className="text-xs font-medium text-muted-foreground bg-secondary rounded-full px-2 py-0.5">
-                      {items.length}
+                      {todos.length}
                     </span>
                     <Button
                       type="button"
@@ -597,14 +750,46 @@ const KanbanBoard = () => {
                           <p className="text-sm font-medium text-foreground truncate">
                             {sale.clientName}
                           </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {sale.product}
-                          </p>
+                          {!STATUS_DE_LEAD.includes(sale.status) && sale.product && (
+                            <p className="text-xs text-muted-foreground mt-0.5">{sale.product}</p>
+                          )}
+                          {(sale.instagram || sale.whatsapp || STATUS_DE_LEAD.includes(sale.status)) && (
+                            <p className="text-xs mt-0.5 truncate">
+                              {sale.instagram ? (
+                                <span className="font-medium text-foreground">@{instagramHandle(sale.instagram)}</span>
+                              ) : (
+                                <span className="text-muted-foreground">sem Instagram</span>
+                              )}
+                              {sale.whatsapp && (
+                                <span className="text-muted-foreground"> · {sale.whatsapp}</span>
+                              )}
+                            </p>
+                          )}
+                          {STATUS_DE_LEAD.includes(sale.status) && sale.sdr && (
+                            <p className="text-[10px] text-muted-foreground mt-0.5 truncate">SDR: {sale.sdr}</p>
+                          )}
                           <div className="flex items-center justify-between mt-2">
                             <span className="text-xs text-muted-foreground">
-                              {format(new Date(sale.date), "dd/MM/yy", { locale: ptBR })}
+                              {format(
+                                new Date(sale.date),
+                                STATUS_DE_LEAD.includes(sale.status) ? "dd/MM/yy HH:mm" : "dd/MM/yy",
+                                { locale: ptBR }
+                              )}
                             </span>
-                            {sale.grossValue > 0 && (
+                            {STATUS_DE_LEAD.includes(sale.status) && sale.leadSource ? (
+                              <span
+                                className={cn(
+                                  "text-[10px] font-medium border rounded-full px-2 py-0.5 truncate max-w-[60%]",
+                                  origemBadgeClass(sale.leadSource)
+                                )}
+                                title={`Origem: ${sale.leadSource}`}
+                              >
+                                {sale.leadSource}
+                                {sale.status === "Ativado" && sale.activatedAt && sale.createdAt && (
+                                  <span title="Tempo da aplicação até a ativação"> · ⚡ {duracao(sale.createdAt, sale.activatedAt)}</span>
+                                )}
+                              </span>
+                            ) : sale.grossValue > 0 && (
                               <span className="text-xs font-semibold text-foreground">
                                 R$ {sale.grossValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                               </span>
@@ -630,6 +815,20 @@ const KanbanBoard = () => {
                       </div>
                     </div>
                   ))}
+
+                  {(ocultos > 0 || expandida) && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="w-full h-7 text-xs text-muted-foreground hover:text-foreground"
+                      onClick={() =>
+                        setColunasExpandidas((prev) => ({ ...prev, [col.id]: !expandida }))
+                      }
+                    >
+                      {expandida ? "Mostrar menos" : `+${ocultos} ${ocultos === 1 ? "cartão" : "cartões"}`}
+                    </Button>
+                  )}
                 </div>
               </div>
             );
@@ -638,11 +837,15 @@ const KanbanBoard = () => {
       </div>
 
       {/* Add Scheduling Dialog */}
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+      <Dialog open={addOpen} onOpenChange={(open) => { setAddOpen(open); if (!open) resetAddForm(); }}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Novo Agendamento</DialogTitle>
-            <DialogDescription>Preencha os dados do agendamento. Será criado como "Pendente".</DialogDescription>
+            <DialogTitle>{agendandoAplicacaoId ? "Agendar aplicação" : "Novo Agendamento"}</DialogTitle>
+            <DialogDescription>
+              {agendandoAplicacaoId
+                ? "Defina data, closer e produto. O cartão vai para \"Agendado / Pendente\"."
+                : 'Preencha os dados do agendamento. Será criado como "Pendente".'}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 mt-2">
             <div className="space-y-1.5">
@@ -711,9 +914,46 @@ const KanbanBoard = () => {
             </div>
             <div className="flex gap-2 pt-2">
               <Button onClick={handleAddSave} className="flex-1 font-semibold">
-                <Save className="h-4 w-4 mr-1" /> Criar Agendamento
+                <Save className="h-4 w-4 mr-1" /> {agendandoAplicacaoId ? "Agendar" : "Criar Agendamento"}
               </Button>
               <Button variant="ghost" onClick={() => { resetAddForm(); setAddOpen(false); }}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Ativar Dialog */}
+      <Dialog open={!!ativarDialog} onOpenChange={(open) => { if (!open) setAtivarDialog(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Ativar lead</DialogTitle>
+            <DialogDescription>Qual SDR vai assumir esse lead?</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-muted-foreground">SDR *</Label>
+              <Select value={ativarSdr} onValueChange={setAtivarSdr}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>{sdrs.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <Button
+                className="flex-1 font-semibold"
+                disabled={!ativarSdr}
+                onClick={async () => {
+                  if (!ativarDialog || !ativarSdr) return;
+                  const ok = await updateSale(ativarDialog.saleId, { status: "Ativado", sdr: ativarSdr });
+                  if (!ok) return;
+                  toast.success(`Lead ativado por ${ativarSdr}`);
+                  setAtivarDialog(null);
+                }}
+              >
+                <Save className="h-4 w-4 mr-1" /> Ativar
+              </Button>
+              <Button variant="ghost" onClick={() => setAtivarDialog(null)}>
                 <X className="h-4 w-4" />
               </Button>
             </div>
@@ -864,13 +1104,133 @@ const KanbanBoard = () => {
       {/* Detail / Edit Dialog */}
       <Dialog open={!!detailSale} onOpenChange={(open) => !open && setDetailSale(null)}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          {detailSale && (
+          {detailSale && STATUS_DE_LEAD.includes(detailSale.status) && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  {detailSale.status === "Ativado" ? "Lead ativado" : "Aplicação"}
+                  {detailSale.leadSource && (
+                    <span className={cn("text-[10px] font-medium border rounded-full px-2 py-0.5", origemBadgeClass(detailSale.leadSource))}>
+                      {detailSale.leadSource}
+                    </span>
+                  )}
+                </DialogTitle>
+                <DialogDescription>
+                  Recebida em {format(new Date(detailSale.createdAt ?? detailSale.date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  {detailSale.activatedAt && (
+                    <>
+                      <br />
+                      Ativada em {format(detailSale.activatedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      {detailSale.createdAt && ` — ${duracao(detailSale.createdAt, detailSale.activatedAt)} depois`}
+                    </>
+                  )}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 mt-2">
+                {seletorStatus(detailSale)}
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-muted-foreground">Nome</Label>
+                  <Input value={editClient} onChange={(e) => setEditClient(e.target.value)} disabled={isViewer} />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-muted-foreground text-xs">Instagram</span>
+                    {detailSale.instagram ? (
+                      <a
+                        href={instagramUrl(detailSale.instagram)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block font-semibold text-primary hover:underline truncate"
+                      >
+                        @{instagramHandle(detailSale.instagram)}
+                      </a>
+                    ) : (
+                      <p className="text-muted-foreground">—</p>
+                    )}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground text-xs">WhatsApp</span>
+                    {detailSale.whatsapp ? (
+                      <a
+                        href={whatsappUrl(detailSale.whatsapp)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block font-semibold text-primary hover:underline truncate"
+                      >
+                        {detailSale.whatsapp}
+                      </a>
+                    ) : (
+                      <p className="text-muted-foreground">—</p>
+                    )}
+                  </div>
+                </div>
+
+                {detailSale.formAnswers && (
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold text-muted-foreground">Respostas do formulário</Label>
+                    <div className="rounded-lg border border-border bg-secondary/40 divide-y divide-border">
+                      {respostasDoFormulario(detailSale.formAnswers).map((r, i) => (
+                        <div key={i} className="px-3 py-2 text-sm">
+                          {r.pergunta && <p className="text-xs text-muted-foreground">{r.pergunta}</p>}
+                          <p className="text-foreground whitespace-pre-wrap">{r.resposta}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-muted-foreground">Origem</Label>
+                  <Select value={editLeadSource} onValueChange={setEditLeadSource} disabled={isViewer}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{LEAD_SOURCES.map((ls) => <SelectItem key={ls} value={ls}>{ls}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-muted-foreground">Anotações</Label>
+                  <Textarea
+                    placeholder="O que rolou na abordagem, combinados, observações..."
+                    value={editNotes}
+                    onChange={(e) => setEditNotes(e.target.value)}
+                    rows={4}
+                    className="resize-none"
+                    disabled={isViewer}
+                  />
+                </div>
+
+                {!isViewer && (
+                  <div className="flex gap-2">
+                    <Button onClick={saveDetail} className="flex-1 font-semibold">
+                      <Save className="h-4 w-4 mr-1" /> Salvar
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteId(detailSale.id);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {detailSale && !STATUS_DE_LEAD.includes(detailSale.status) && (
             <>
               <DialogHeader>
                 <DialogTitle>{isViewer ? "Detalhes do Agendamento" : "Editar Agendamento"}</DialogTitle>
                 {!isViewer && <DialogDescription>Altere as informações do agendamento.</DialogDescription>}
               </DialogHeader>
               <div className="space-y-4 mt-2">
+                {seletorStatus(detailSale)}
+
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-muted-foreground">Data</Label>
                   <Popover>
@@ -959,6 +1319,41 @@ const KanbanBoard = () => {
                     </div>
                   )}
                 </div>
+
+                {(detailSale.instagram || detailSale.whatsapp) && (
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-muted-foreground text-xs">Instagram</span>
+                      {detailSale.instagram ? (
+                        <a href={instagramUrl(detailSale.instagram)} target="_blank" rel="noreferrer" className="block font-semibold text-primary hover:underline truncate">
+                          @{instagramHandle(detailSale.instagram)}
+                        </a>
+                      ) : <p className="text-muted-foreground">—</p>}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground text-xs">WhatsApp</span>
+                      {detailSale.whatsapp ? (
+                        <a href={whatsappUrl(detailSale.whatsapp)} target="_blank" rel="noreferrer" className="block font-semibold text-primary hover:underline truncate">
+                          {detailSale.whatsapp}
+                        </a>
+                      ) : <p className="text-muted-foreground">—</p>}
+                    </div>
+                  </div>
+                )}
+
+                {detailSale.formAnswers && (
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold text-muted-foreground">Respostas do formulário</Label>
+                    <div className="rounded-lg border border-border bg-secondary/40 divide-y divide-border">
+                      {respostasDoFormulario(detailSale.formAnswers).map((r, i) => (
+                        <div key={i} className="px-3 py-2 text-sm">
+                          {r.pergunta && <p className="text-xs text-muted-foreground">{r.pergunta}</p>}
+                          <p className="text-foreground whitespace-pre-wrap">{r.resposta}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="h-px bg-border" />
 

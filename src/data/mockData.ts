@@ -147,12 +147,24 @@ export const LOSS_REASON_COLOR_MAP: Record<string, string> = {
 };
 
 // Unified status colors used across Kanban, Dashboard charts, and Sales Database
+/**
+ * Status de lead: cartao que ainda nao virou call. Fica so no Kanban, fora
+ * das metricas e da base de vendas, e so pode ir para Pendente (agendar) ou
+ * Descartado. "Aplicação" e como chega do formulario; "Ativado" e o SDR marcando
+ * que ja abordou.
+ */
+export const LEAD_STATUSES = ["Aplicação", "Ativado"] as const;
+export const isLeadStatus = (status: string) => (LEAD_STATUSES as readonly string[]).includes(status);
+
 export const STATUS_COLOR_MAP: Record<string, { hsl: string; textClass: string; borderBgClass: string }> = {
+  "Aplicação": { hsl: "hsl(320, 72%, 60%)", textClass: "text-fuchsia-400", borderBgClass: "border-fuchsia-500/60 bg-fuchsia-500/5" },
+  Ativado:     { hsl: "hsl(190, 80%, 55%)", textClass: "text-cyan-400",    borderBgClass: "border-cyan-500/60 bg-cyan-500/5" },
   Pendente:    { hsl: "hsl(48, 96%, 53%)",   textClass: "text-yellow-500",  borderBgClass: "border-yellow-500/60 bg-yellow-500/5" },
   Pago:        { hsl: "hsl(152, 69%, 41%)",  textClass: "text-emerald-500", borderBgClass: "border-emerald-500/60 bg-emerald-500/5" },
   Loss:        { hsl: "hsl(0, 84%, 60%)",    textClass: "text-red-500",     borderBgClass: "border-red-500/60 bg-red-500/5" },
   "Follow Up": { hsl: "hsl(217, 91%, 60%)",  textClass: "text-blue-500",    borderBgClass: "border-blue-500/60 bg-blue-500/5" },
   "No Show":   { hsl: "hsl(25, 95%, 53%)",   textClass: "text-orange-500",  borderBgClass: "border-orange-500/60 bg-orange-500/5" },
+  Descartado:  { hsl: "hsl(240, 6%, 45%)",   textClass: "text-slate-400",   borderBgClass: "border-slate-500/60 bg-slate-500/5" },
   Reembolsado: { hsl: "hsl(240, 5%, 65%)",   textClass: "text-zinc-400",    borderBgClass: "border-zinc-500/60 bg-zinc-500/5" },
 };
 

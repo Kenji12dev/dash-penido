@@ -11,6 +11,7 @@ import LeadSourceDistribution from "@/components/dashboard/LeadSourceDistributio
 import StatusDistribution from "@/components/dashboard/StatusDistribution";
 import LossReasonDistribution from "@/components/dashboard/LossReasonDistribution";
 import CallStatusChart from "@/components/dashboard/CallStatusChart";
+import LeadFunnelChart from "@/components/dashboard/LeadFunnelChart";
 import SdrCloserDistribution from "@/components/dashboard/SdrCloserDistribution";
 import MonthlyGoals from "@/components/dashboard/MonthlyGoals";
 import { useDashboardMetrics, DashboardFilters } from "@/hooks/useDashboardMetrics";
@@ -100,6 +101,7 @@ const Dashboard = ({ onGoToKanban }: { onGoToKanban: () => void }) => {
         </div>
 
         <RevenueChart data={metrics.revenueOverTime} />
+        <LeadFunnelChart data={metrics.leadFunnel} />
         <CallStatusChart
           data={metrics.statusData}
           closers={metrics.closersList}
